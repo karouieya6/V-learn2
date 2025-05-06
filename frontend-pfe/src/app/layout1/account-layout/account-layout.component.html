@@ -1,0 +1,10 @@
+<div class="d-flex" style="min-height: 100vh; margin-top: 80px;">
+  <app-student-sidebar
+    *ngIf="userRole === 'STUDENT'"
+    class="d-none d-md-block"
+  ></app-student-sidebar>
+
+  <main class="flex-grow-1 px-3">
+    <router-outlet></router-outlet>
+  </main>
+</div>

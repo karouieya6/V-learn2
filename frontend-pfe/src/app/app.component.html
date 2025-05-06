@@ -1,0 +1,8 @@
+<!-- Show header only if allowed -->
+<app-header-three *ngIf="showHeaderFooter "></app-header-three>
+
+<!-- Page content -->
+<router-outlet></router-outlet>
+
+<!-- Show footer only if allowed -->
+<app-footer *ngIf="showHeaderFooter"></app-footer>

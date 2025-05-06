@@ -1,0 +1,81 @@
+<div class="table-responsive border-0">
+  <table class="table table-dark-gray align-middle p-4 mb-0 table-hover">
+    <thead>
+      <tr>
+        <th scope="col" class="border-0 rounded-start">Course Title</th>
+        <th scope="col" class="border-0">Total Lectures</th>
+        <th scope="col" class="border-0">Completed Lecture</th>
+        <th scope="col" class="border-0 rounded-end">Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let item of courseList; let i = index">
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="w-100px">
+              <img [src]="item.image" class="rounded" alt="" />
+            </div>
+            <div class="mb-0 ms-2">
+              <h6>
+                <a href="javascript:void(0);">{{ item.title }}</a>
+              </h6>
+
+              <div class="overflow-hidden">
+                <h6 class="mb-0 text-end">{{ item.progress }}%</h6>
+                <ngb-progressbar
+                  type="primary"
+                  [value]="item.progress"
+                  class="progress-sm aos"
+                  data-aos="slide-right"
+                  data-aos-delay="200"
+                  data-aos-duration="1000"
+                  data-aos-easing="ease-in-out"
+                ></ngb-progressbar>
+              </div>
+            </div>
+          </div>
+        </td>
+
+        <td>{{ item.total_lessons }}</td>
+        <td>{{ item.lessons_completed }}</td>
+
+        <td>
+          <ng-container *ngIf="item.progress == 100; else notCompleted">
+            <button class="btn btn-sm btn-success me-1 mb-1 disabled">
+              <i class="bi bi-check me-1"></i>Complete
+            </button>
+            <a href="javascript:void(0);" class="btn btn-sm btn-light me-1 ms-1">
+              <i class="bi bi-arrow-repeat me-1"></i>Restart
+            </a>
+          </ng-container>
+          <ng-template #notCompleted>
+            <a href="javascript:void(0);" class="btn btn-sm btn-primary-soft me-1 mb-1 mb-md-0">
+              <i class="bi bi-play-circle me-1"></i>Continue
+            </a>
+          </ng-template>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="d-sm-flex justify-content-sm-between align-items-sm-center mt-4 mt-sm-3">
+  <p class="mb-0 text-center text-sm-start">Showing 1 to {{ courseList.length }} of {{ courseList.length }} entries</p>
+
+  <nav class="d-flex justify-content-center mb-0" aria-label="navigation">
+    <ngb-pagination
+      [collectionSize]="courseList.length"
+      [page]="1"
+      size="sm"
+      class="pagination pagination-sm pagination-primary-soft d-inline-block d-md-flex rounded mb-0"
+    >
+      <ng-template ngbPaginationPrevious>
+        <i class="fas fa-angle-left"></i>
+      </ng-template>
+      <ng-template ngbPaginationNext>
+        <i class="fas fa-angle-right"></i>
+      </ng-template>
+    </ngb-pagination>
+  </nav>
+</div>

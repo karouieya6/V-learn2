@@ -1,0 +1,21 @@
+.student-sidebar {
+  width: 250px;
+  background-color: #111827;
+  min-height: 100%;
+  color: white;
+
+  .nav-link {
+    padding: 12px 20px;
+    font-size: 15px;
+    color: white;
+
+    &:hover {
+      background-color: #1f2937;
+      color: white;
+    }
+
+    &.active {
+      background-color: #2563eb;
+    }
+  }
+}

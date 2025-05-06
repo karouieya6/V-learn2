@@ -1,0 +1,353 @@
+@for (item of courses; track $index; let first = $first) {
+  <div class="card border" [ngClass]="{ 'mt-4': !first }">
+    <div class="card-header border-bottom">
+      <div class="card">
+        <div class="row g-0">
+          <div class="col-md-3">
+            <img [src]="item.image" class="rounded-2" alt="Card image" />
+          </div>
+          <div class="col-md-9">
+            <div class="card-body">
+              <h3 class="card-title">
+                <a href="javascript:void(0);">{{ item.courseTitle }}</a>
+              </h3>
+
+              <ul class="list-inline mb-2">
+                <li class="list-inline-item h6 fw-light mb-1 mb-sm-0">
+                  <i class="far fa-clock text-danger me-2"></i
+                  >{{ item.duration }}
+                </li>
+                <li class="list-inline-item h6 fw-light mb-1 mb-sm-0 ms-1">
+                  <i class="fas fa-table text-orange me-2"></i
+                  >{{ item.lectures }} lectures
+                </li>
+                <li class="list-inline-item h6 fw-light ms-1">
+                  <i class="fas fa-signal text-success me-2"></i
+                  >{{ item.level }}
+                </li>
+              </ul>
+
+              <a
+                href="javascript:void(0);"
+                class="btn btn-primary-soft btn-sm mb-0"
+                >Resume course</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <h5>Course Curriculum</h5>
+
+      <div
+        ngbAccordion
+        [closeOthers]="true"
+        class="accordion accordion-icon accordion-bg-light"
+        id="accordionExample2"
+      >
+        @for (data of item.curriculum; track data; let first = $first) {
+          <div
+            ngbAccordionItem
+            class="accordion-item mb-3"
+            [collapsed]="first ? false : true"
+          >
+            <h6
+              ngbAccordionHeader
+              class="accordion-header font-base"
+              id="heading-1"
+            >
+              <button
+                ngbAccordionButton
+                class="accordion-button fw-bold rounded d-block pe-4"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-1"
+                aria-expanded="true"
+                aria-controls="collapse-1"
+              >
+                <span class="mb-0">{{ data.sectionTitle }}</span>
+                <span class="small d-block mt-1"
+                  >({{ data.lecturesCount }} Lectures)</span
+                >
+              </button>
+            </h6>
+            <div
+              ngbAccordionCollapse
+              id="collapse-1"
+              class="accordion-collapse collapse show"
+              aria-labelledby="heading-1"
+              data-bs-parent="#accordionExample2"
+            >
+              <div ngbAccordionBody class="accordion-body mt-3">
+                <ng-template>
+                  <div class="vstack gap-3">
+                    <div class="overflow-hidden">
+                      <div class="d-flex justify-content-between">
+                        <p class="mb-1 h6">
+                          {{ data.completed }}/{{
+                            data.lecturesCount
+                          }}
+                          Completed
+                        </p>
+                        <h6 class="mb-1 text-end">{{ data.progress }}%</h6>
+                      </div>
+                      <ngb-progressbar
+                        type="primary"
+                        [value]="data.progress"
+                        class="progress-sm aos"
+                        data-aos="slide-right"
+                        data-aos-delay="200"
+                        data-aos-duration="1000"
+                        data-aos-easing="ease-in-out"
+                      ></ngb-progressbar>
+                    </div>
+
+                    @for (
+                      lecture of data.lectures;
+                      track lecture;
+                      let last = $last
+                    ) {
+                      <div>
+                        <div
+                          class="d-flex justify-content-between align-items-center mb-2"
+                        >
+                          <div
+                            class="position-relative d-flex align-items-center"
+                          >
+                            @if (lecture.locked) {
+                              <a
+                                class="btn btn-light btn-round btn-sm mb-0 stretched-link position-static"
+                                (click)="openModal(coursePremium)"
+                              >
+                                <i class="bi bi-lock-fill"></i>
+                              </a>
+                            } @else {
+                              <a
+                                href="javascript:void(0);"
+                                class="btn btn-round btn-sm mb-0 stretched-link position-static"
+                                [ngClass]="
+                                  lecture.notes
+                                    ? 'btn-success'
+                                    : 'btn-danger-soft'
+                                "
+                              >
+                                <i class="fas fa-play me-0"></i>
+                              </a>
+                            }
+                            <span
+                              class="d-inline-block text-truncate ms-2 mb-0 h6 fw-light w-150px w-sm-200px"
+                              >{{ lecture.lectureTitle }}</span
+                            >
+                          </div>
+                          <p class="mb-0 text-truncate">
+                            {{ lecture.duration }}
+                          </p>
+                        </div>
+
+                        @if (lecture.notes) {
+                          <a
+                            class="btn btn-xs btn-warning mb-0"
+                            data-bs-toggle="collapse"
+                            (click)="lecture.isCollapsed = !lecture.isCollapsed"
+                            role="button"
+                            aria-expanded="false"
+                            aria-controls="addnote-1"
+                          >
+                            <i class="bi fa-fw bi-pencil-square me-2"></i>Note
+                          </a>
+                          <a
+                            href="javascript:void(0);"
+                            class="btn btn-xs btn-dark mb-0 ms-1"
+                            >Play again</a
+                          >
+
+                          <div
+                            #collapse="ngbCollapse"
+                            [(ngbCollapse)]="lecture.isCollapsed!"
+                            class="collapse"
+                            id="addnote-1"
+                          >
+                            <div class="card card-body p-0 mt-2">
+                              @for (note of lecture.notes; track note) {
+                                <div
+                                  class="d-flex justify-content-between bg-light rounded-2 p-2 mb-2"
+                                >
+                                  <div class="d-flex align-items-center">
+                                    <span class="badge bg-dark me-2">{{
+                                      note.timestamp
+                                    }}</span>
+                                    <h6
+                                      class="d-inline-block text-truncate w-100px w-sm-200px mb-0 fw-light"
+                                    >
+                                      {{ note.noteContent }}
+                                    </h6>
+                                  </div>
+
+                                  <div class="d-flex">
+                                    <a
+                                      href="javascript:void(0);"
+                                      class="btn btn-sm btn-light btn-round me-2 mb-0"
+                                      ><i class="bi fa-fw bi-play-fill"></i
+                                    ></a>
+                                    <a
+                                      href="javascript:void(0);"
+                                      class="btn btn-sm btn-light btn-round mb-0"
+                                      ><i class="bi fa-fw bi-trash-fill"></i
+                                    ></a>
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
+
+                        @if (!last) {
+                          <hr class="mb-0" />
+                        }
+                      </div>
+                    }
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<ng-template #coursePremium let-modal>
+  <div class="modal-content">
+    <div class="modal-header border-0 bg-transparent">
+      <button
+        type="button"
+        class="btn-close"
+        (click)="modal.close()"
+        aria-label="Close"
+      ></button>
+    </div>
+
+    <div class="modal-body px-5 pb-5 position-relative overflow-hidden">
+      <figure
+        class="position-absolute bottom-0 end-0 mb-n4 me-n4 d-none d-sm-block"
+      >
+        <img src="assets/images/element/01.svg" alt="element" />
+      </figure>
+      <figure class="position-absolute top-0 end-0 z-index-n1 opacity-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+          width="818.6px"
+          height="235.1px"
+          viewBox="0 0 818.6 235.1"
+        >
+          <path
+            class="fill-info"
+            d="M735,226.3c-5.7,0.6-11.5,1.1-17.2,1.7c-66.2,6.8-134.7,13.7-192.6-16.6c-34.6-18.1-61.4-47.9-87.3-76.7 c-21.4-23.8-43.6-48.5-70.2-66.7c-53.2-36.4-121.6-44.8-175.1-48c-13.6-0.8-27.5-1.4-40.9-1.9c-46.9-1.9-95.4-3.9-141.2-16.5 C8.3,1.2,6.2,0.6,4.2,0H0c3.3,1,6.6,2,10,3c46,12.5,94.5,14.6,141.5,16.5c13.4,0.6,27.3,1.1,40.8,1.9 c53.4,3.2,121.5,11.5,174.5,47.7c26.5,18.1,48.6,42.7,70,66.5c26,28.9,52.9,58.8,87.7,76.9c58.3,30.5,127,23.5,193.3,16.7 c5.8-0.6,11.5-1.2,17.2-1.7c26.2-2.6,55-4.2,83.5-2.2v-1.2C790,222,761.2,223.7,735,226.3z"
+          ></path>
+        </svg>
+      </figure>
+
+      <h2>
+        Get Premium Course in
+        <span class="text-success">$800</span>
+
+      </h2>
+      <p>
+        Prosperous understood Middletons in conviction an uncommonly do.
+        Supposing so be resolving breakfast am or perfectly.
+      </p>
+
+      <div class="row mb-3 item-collapse">
+        <div class="col-sm-6">
+          <ul class="list-group list-group-borderless">
+            <li class="list-group-item text-body">
+              <i class="bi bi-patch-check-fill text-success"></i>High quality
+              Curriculum
+            </li>
+            <li class="list-group-item text-body">
+              <i class="bi bi-patch-check-fill text-success"></i>Tuition
+              Assistance
+            </li>
+            <li class="list-group-item text-body">
+              <i class="bi bi-patch-check-fill text-success"></i>Diploma course
+            </li>
+          </ul>
+        </div>
+        <div class="col-sm-6">
+          <ul class="list-group list-group-borderless">
+            <li class="list-group-item text-body">
+              <i class="bi bi-patch-check-fill text-success"></i>Intermediate
+              courses
+            </li>
+            <li class="list-group-item text-body">
+              <i class="bi bi-patch-check-fill text-success"></i>Over 200 online
+              courses
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <a href="javascript:void(0);" class="btn btn-lg btn-orange-soft"
+        >Purchase premium</a
+      >
+    </div>
+
+    <div class="modal-footer d-block bg-info">
+      <div
+        class="d-sm-flex justify-content-sm-between align-items-center text-center text-sm-start"
+      >
+        <ul class="list-inline mb-0 social-media-btn mb-2 mb-sm-0">
+          <li class="list-inline-item">
+            <a
+              class="btn btn-sm mb-0 me-1 bg-white text-facebook"
+              href="javascript:void(0);"
+              ><i class="fab fa-fw fa-facebook-f"></i
+            ></a>
+          </li>
+          <li class="list-inline-item">
+            <a
+              class="btn btn-sm mb-0 me-1 bg-white text-instagram ms-1"
+              href="javascript:void(0);"
+              ><i class="fab fa-fw fa-instagram"></i
+            ></a>
+          </li>
+          <li class="list-inline-item">
+            <a
+              class="btn btn-sm mb-0 me-1 bg-white text-twitter ms-1"
+              href="javascript:void(0);"
+              ><i class="fab fa-fw fa-twitter"></i
+            ></a>
+          </li>
+          <li class="list-inline-item">
+            <a
+              class="btn btn-sm mb-0 bg-white text-linkedin ms-1"
+              href="javascript:void(0);"
+              ><i class="fab fa-fw fa-linkedin-in"></i
+            ></a>
+          </li>
+        </ul>
+
+        <div>
+          <p class="mb-1 small">
+            <a href="javascript:void(0);" class="text-white"
+              ><i class="far fa-envelope fa-fw me-2"></i
+              >example&#64;gmail.com</a
+            >
+          </p>
+          <p class="mb-0 small">
+            <a href="javascript:void(0);" class="text-white"
+              ><i class="fas fa-headset fa-fw me-2"></i>123-456-789</a
+            >
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<div class="modal fade" id="coursePremium" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg"></div>
+</div>

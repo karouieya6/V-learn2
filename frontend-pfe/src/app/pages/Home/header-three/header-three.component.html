@@ -1,0 +1,232 @@
+<header>
+  <div
+  id="header-sticky"
+  [ngClass]="headerSticky 
+    ? 'header__area header__padding-2 sticky bg-white shadow-sm' 
+    : 'header__area header__transparent header__padding-2'"
+>
+
+    <div class="container">
+      <div class="row align-items-center">
+        <!-- Logo (always visible) -->
+        <div class="col-xxl-2 col-xl-2 col-lg-6 col-md-6 col-sm-6 col-6">
+          <div class="header__left d-flex">
+            <div class="logo">
+              <a [routerLink]="['/']">
+                <img
+                  src="../../../../assets/img/logo/v-learn.png"
+                  alt="V-Learn"
+                  class="img-fluid"
+                  width="160"
+                />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu (hidden on sign-in / sign-up) -->
+        <div class="col-xxl-6 col-xl-6 d-none d-xl-block" *ngIf="!isAuthPage()">
+          <div class="main-menu main-menu-3">
+            <nav id="mobile-menu">
+              <ul>
+                <li><a [routerLink]="['/']">Home</a></li>
+                <li><a [routerLink]="['/courses']">Courses</a></li>
+                <li><a [routerLink]="['/contact']">Contact</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+
+        <!-- Search + Buttons/Profile (hidden on sign-in / sign-up) -->
+        <div
+          class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6 col-6"
+          *ngIf="!isAuthPage()"
+        >
+          <div class="header__right d-flex justify-content-end align-items-center">
+            <!-- Search Icon -->
+            <div class="header__search-2 mr-20" (click)="handleSearch()" aria-label="Toggle search">
+              <svg class="search-toggle" viewBox="0 0 584.4 584.4">
+                <g>
+                  <g>
+                    <path
+                      class="st0"
+                      d="M565.7,474.9l-61.1-61.1c-3.8-3.8-8.8-5.9-13.9-5.9c-6.3,0-12.1,3-15.9,8.3c-16.3,22.4-36,42.1-58.4,58.4c-4.8,3.5-7.8,8.8-8.3,14.5c-0.4,5.6,1.7,11.3,5.8,15.4l61.1,61.1c12.1,12.1,28.2,18.8,45.4,18.8c17.1,0,33.3-6.7,45.4-18.8C590.7,540.6,590.7,499.9,565.7,474.9z"
+                    />
+                    <path
+                      class="st1"
+                      d="M254.6,509.1c140.4,0,254.5-114.2,254.5-254.5C509.1,114.2,394.9,0,254.6,0C114.2,0,0,114.2,0,254.5C0,394.9,114.2,509.1,254.6,509.1z M254.6,76.4c98.2,0,178.1,79.9,178.1,178.1s-79.9,178.1-178.1,178.1S76.4,352.8,76.4,254.5S156.3,76.4,254.6,76.4z"
+                    />
+                  </g>
+                </g>
+              </svg>
+              <input
+                *ngIf="searchBar"
+                type="text"
+                placeholder="Search..."
+                class="search-input"
+                (blur)="handleSearchClose()"
+              />
+            </div>
+
+            <!-- Auth Buttons (visible when not logged in) -->
+            <div
+              class="header__auth-buttons d-flex align-items-center gap-10"
+              *ngIf="!isLoggedIn"
+            >
+              <a [routerLink]="['/sign-up']" class="e-btn">Sign up</a>
+              <a [routerLink]="['/sign-in']" class="e-btn">Sign in</a>
+            </div>
+
+            <!-- Profile Dropdown (visible when logged in) -->
+            <div *ngIf="isLoggedIn" ngbDropdown>
+              <a
+                ngbDropdownToggle
+                class="avatar avatar-sm p-0 arrow-none"
+                id="profileDropdown"
+                role="button"
+                aria-expanded="false"
+              >
+                <img [src]="userImageUrl || defaultAvatar" class="rounded-circle"  width="40"/>
+
+              </a>
+
+              <ul
+                ngbDropdownMenu
+                class="dropdown-menu dropdown-animation dropdown-menu-end shadow pt-3"
+                aria-labelledby="profileDropdown"
+              >
+                <li class="px-3 mb-3">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar me-3">
+                      <img
+                        class="avatar-img rounded-circle shadow"
+                        [src]="userProfilePic"
+                        alt="avatar"
+                      />
+                    </div>
+                    <div>
+                      <a class="h6" href="javascript:void(0);">{{ userName }}</a>
+                      <p class="small m-0">{{ userEmail }}</p>
+                    </div>
+                  </div>
+                </li>
+
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a class="dropdown-item" routerLink="/edit-profile">
+                    <i class="bi bi-person fa-fw me-2"></i>Edit Profile
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" routerLink="/settings">
+                    <i class="bi bi-gear fa-fw me-2"></i>Account Settings
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" routerLink="/help">
+                    <i class="bi bi-info-circle fa-fw me-2"></i>Help
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item bg-danger-soft-hover"
+                    (click)="logout()"
+                    href="javascript:void(0);"
+                  >
+                    <i class="bi bi-power fa-fw me-2"></i>Sign Out
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+
+                <li>
+                  <div
+                    class="bg-light dark-mode-switch theme-icon-active d-flex align-items-center p-1 rounded mt-2"
+                  >
+                    <button
+                      type="button"
+                      class="btn btn-sm mb-0"
+                      [class.active]="mode == 'light'"
+                      (click)="changeTheme('light')"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        class="bi bi-sun fa-fw mode-switch"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 0 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"
+                        />
+                      </svg>
+                      Light
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm mb-0"
+                      [class.active]="mode == 'dark'"
+                      (click)="changeTheme('dark')"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        class="bi bi-moon-stars fa-fw mode-switch"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286z"
+                        />
+                        <path
+                          d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.734 1.734 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.734 1.734 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.734 1.734 0 0 0 1.097-1.097l.387-1.162zM13.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.156 1.156 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.156 1.156 0 0 0-.732-.732l-.774-.258a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732L13.863.1z"
+                        />
+                      </svg>
+                      Dark
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm mb-0"
+                      [class.active]="mode == 'auto'"
+                      (click)="changeTheme('auto')"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        class="bi bi-circle-half fa-fw mode-switch"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M8 15A7 7 0 1 0 8 1v14zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16z"
+                        />
+                      </svg>
+                      Auto
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Sidebar Toggle (visible on smaller screens) -->
+            <div class="sidebar__menu d-xl-none ml-20">
+              <div
+                (click)="handleSidebar()"
+                class="sidebar-toggle-btn sidebar-toggle-btn-white"
+                id="sidebar-toggle"
+                aria-label="Toggle sidebar menu"
+              >
+                <span class="line"></span>
+                <span class="line"></span>
+                <span class="line"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</header>
