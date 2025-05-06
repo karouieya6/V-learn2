@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/apigateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/certificateservice/certificateservice/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/certificateservice/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/contentservice/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/courseservice/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/enrollmentservice/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eurekaserver/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/userservice/src/main/java" charset="UTF-8" />
+  </component>
+</project>
