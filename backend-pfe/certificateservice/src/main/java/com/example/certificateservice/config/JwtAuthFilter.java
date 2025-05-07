@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -18,7 +19,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -26,13 +29,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        System.out.println("JwtAuthFilter triggered");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -51,40 +52,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // ✅ Extract data from token
         Claims claims = jwtUtil.extractAllClaims(token);
         String username = claims.getSubject();
+        ArrayList<String> role = claims.get("roles", ArrayList.class);
+        String roleName = role.get(0);
 
-        // Flexible extraction: handles both "roles" (list) and "role" (single)
-        List<String> roles = new ArrayList<>();
-        Object rolesObj = claims.get("roles");
-        if (rolesObj instanceof List<?>) {
-            for (Object role : (List<?>) rolesObj) {
-                roles.add(role.toString());
-            }
-        } else if (rolesObj instanceof String) {
-            roles.add(rolesObj.toString());
-        } else {
-            Object singleRole = claims.get("role"); // fallback to 'role' if 'roles' is missing
-            if (singleRole != null) {
-                roles.add(singleRole.toString());
-            }
+        if (username == null || role == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token payload");
+            return;
         }
 
-        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        for (String role : roles) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-        }
+        // ✅ Convert role to authority
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + roleName);
 
-        UserDetails userDetails = new User(username, "", authorities);
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+        User userDetails = new User(username, "", Collections.singletonList(authority));
 
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+
+        // ✅ Set the authenticated user in the security context
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Debug logs
-        System.out.println("TOKEN: " + token);
-        System.out.println("Roles claim: " + roles);
-        System.out.println("Authorities: " + authorities);
+        // ✅ Debug logs
+        System.out.println("🧠 Authenticated: " + username);
+        System.out.println("🛡 Role: ROLE_" + role);
+        System.out.println("✅ Authorities: " + authentication.getAuthorities());
 
         filterChain.doFilter(request, response);
     }

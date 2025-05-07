@@ -165,15 +165,23 @@ public class EnrollmentService {
         );
     }
 
+    public CourseStatsResponse getMostPopularCourseStats() {
+        List<Object[]> result = enrollmentRepository.findMostPopularCourse();
+        if (!result.isEmpty()) {
+            Object[] row = result.get(0);
+            return new CourseStatsResponse(
+                    ((Number) row[0]).longValue(),
+                    (String) row[1],
+                    ((Number) row[2]).longValue()
+            );
+        }
+        return null;
+    }
     public EnrollmentResponse getEnrollmentById(Long id) {
         Enrollment enrollment = enrollmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Enrollment not found"));
-
-        return EnrollmentResponse.builder()
-                .id(enrollment.getId())
-                .userId(enrollment.getUserId())
-                .courseId(enrollment.getCourseId())
-                .build();
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Enrollment not found"));
+        return mapToResponse(enrollment);
     }
+
 
 }

@@ -110,16 +110,7 @@ public class EnrollmentController {
     @GetMapping("/admin/stats/most-popular-course")
     @PreAuthorize("hasRole('ADMIN')")
     public CourseStatsResponse getMostPopularCourse() {
-        List<Object[]> result = enrollmentRepository.findMostPopularCourse(); // ❌ wrong place for this logic
-        if (!result.isEmpty()) {
-            Object[] row = result.get(0);
-            return new CourseStatsResponse(
-                    ((Number) row[0]).longValue(),
-                    (String) row[1],
-                    ((Number) row[2]).longValue()
-            );
-        }
-        return null;
+        return enrollmentService.getMostPopularCourseStats();
     }
 
 

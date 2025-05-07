@@ -7,7 +7,9 @@ import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-
+import com.example.userservice.util.ExcelExporter;
+import java.util.List;
+import java.io.IOException;
 @RestController
 @RequestMapping("/admin/stats")
 @PreAuthorize("hasRole('ADMIN')") // ✅ Protect all endpoints in this controller
@@ -53,17 +55,6 @@ public class AdminStatsController {
         return response.getBody();
     }
 
-    @GetMapping("/certificates-issued")
-    public long getCertificatesIssued(HttpServletRequest request) {
-        HttpEntity<Void> entity = new HttpEntity<>(createHeaders(request));
-        ResponseEntity<Long> response = restTemplate.exchange(
-                "http://certificateservice/admin/stats/total-certificates", // ✅ Use service name
-                HttpMethod.GET,
-                entity,
-                Long.class
-        );
-        return response.getBody();
-    }
 
     @GetMapping("/total-users")
     public long getTotalUsers() {
@@ -81,4 +72,30 @@ public class AdminStatsController {
         );
         return response.getBody();
     }
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportStats(HttpServletRequest request,
+                                              @RequestParam(defaultValue = "xlsx") String format) throws IOException {
+        if (!format.equalsIgnoreCase("xlsx")) {
+            return ResponseEntity.badRequest().body("Only Excel format (xlsx) is supported.".getBytes());
+        }
+
+        // ✅ Build the rows (Header + data)
+        List<String[]> rows = List.of(
+                new String[] {"Metric", "Value"},
+                new String[] {"Total Users", String.valueOf(getTotalUsers())},
+                new String[] {"Total Courses", String.valueOf(getTotalCourses(request))},
+                new String[] {"Total Enrollments", String.valueOf(getTotalEnrollments(request))},
+
+                new String[] {"Most Popular Course", getMostPopularCourse(request).getCourseTitle()}
+        );
+
+        byte[] excelFile = ExcelExporter.generateDashboardStatsExcel(rows);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=dashboard_stats.xlsx");
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+        return new ResponseEntity<>(excelFile, headers, HttpStatus.OK);
+    }
+
 }

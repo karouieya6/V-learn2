@@ -22,6 +22,8 @@ public class AppUser implements UserDetails{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "enabled")
+    private boolean enabled = false; // default: not verified
 
     @Column(nullable = false, unique = true)
     private String username;

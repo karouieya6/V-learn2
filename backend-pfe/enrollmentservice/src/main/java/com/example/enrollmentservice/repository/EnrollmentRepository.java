@@ -17,11 +17,15 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Page<Enrollment> findByUserId(Long userId, Pageable pageable);
     @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.userId = :userId")
     long countByUserId(@Param("userId") Long userId);
-    @Query("SELECT e.courseId, COUNT(e.id) FROM Enrollment e GROUP BY e.courseId ORDER BY COUNT(e.id) DESC")
+    @Query(value = """
+    SELECT e.course_id, c.title, COUNT(e.id) AS enrollments
+    FROM enrollments e
+    JOIN courses c ON e.course_id = c.id
+    GROUP BY e.course_id, c.title
+    ORDER BY enrollments DESC
+    LIMIT 1
+    """, nativeQuery = true)
     List<Object[]> findMostPopularCourse();
-
-
-
 
 
 }
