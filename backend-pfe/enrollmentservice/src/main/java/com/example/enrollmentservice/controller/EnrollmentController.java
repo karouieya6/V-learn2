@@ -112,6 +112,12 @@ public class EnrollmentController {
     public CourseStatsResponse getMostPopularCourse() {
         return enrollmentService.getMostPopularCourseStats();
     }
+    @GetMapping("/instructor/{instructorId}/student-count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Long> countStudentsByInstructor(@PathVariable Long instructorId) {
+        long count = enrollmentRepository.countDistinctStudentsByInstructorId(instructorId);
+        return ResponseEntity.ok(count);
+    }
 
 
 

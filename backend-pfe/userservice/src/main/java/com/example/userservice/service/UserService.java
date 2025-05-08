@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,7 +26,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
-
+    private final RestTemplate restTemplate;
     @Transactional
     public String register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -144,4 +145,27 @@ public class UserService {
         return user.getId();
     }
 
+
+    public long fetchEnrollmentsCount(Long userId) {
+        return restTemplate.getForObject("http://enrollmentservice/api/enrollments/user/" + userId + "/count", Long.class);
+    }
+
+    public long fetchCompletedCourses(Long userId) {
+        return restTemplate.getForObject("http://contentservice/api/lessons/progress/user/" + userId + "/count-completed", Long.class);
+    }
+
+    public long fetchCertificatesCount(Long userId) {
+        return restTemplate.getForObject("http://certificateservice/api/certificates/user/" + userId + "/count", Long.class);
+    }
+
+    public long fetchInstructorCourseCount(Long instructorId) {
+        return restTemplate.getForObject("http://courseservice/api/courses/instructor/" + instructorId + "/count", Long.class);
+    }
+
+    public long fetchInstructorStudentCount(Long instructorId) {
+        return restTemplate.getForObject("http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/student-count", Long.class);
+    }
 }
+
+
+

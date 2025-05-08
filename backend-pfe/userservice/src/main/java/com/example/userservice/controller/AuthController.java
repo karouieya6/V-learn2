@@ -3,9 +3,7 @@ package com.example.userservice.controller;
 import com.example.userservice.dto.LoginRequest;
 import com.example.userservice.dto.RegisterRequest;
 import com.example.userservice.model.AppUser;
-import com.example.userservice.model.VerificationToken;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.VerificationTokenRepository;
 import com.example.userservice.service.UserService;
 import com.example.userservice.util.JwtUtil;
 import jakarta.validation.Valid;
@@ -30,14 +28,25 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
+    private final Map<String, ResetTokenData> resetTokens = new ConcurrentHashMap<>();
+
+    private static class ResetTokenData {
+        String email;
+        LocalDateTime expiresAt;
+
+        ResetTokenData(String email, LocalDateTime expiresAt) {
+            this.email = email;
+            this.expiresAt = expiresAt;
+        }
+    }
+
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
-    private final VerificationTokenRepository verificationTokenRepository;
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
@@ -49,25 +58,13 @@ public class AuthController {
             AppUser user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // ❌ Check if account is not verified
-            if (!user.isEnabled()) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("message", "❌ Please verify your email first"));
-            }
-
             String token = jwtUtil.generateToken(user);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("user", Map.of(
-                    "id", user.getId(),
-                    "email", user.getEmail(),
-                    "username", user.getUsername()
-            ));
+            user.setForceReLogin(false); // ✅ Reset the flag
+            userRepository.save(user);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(response);
+                    .body(Map.of("token", token));
 
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -75,6 +72,7 @@ public class AuthController {
                     .body(Map.of("message", "Invalid credentials"));
         }
     }
+
 
 
 
@@ -103,7 +101,7 @@ public class AuthController {
         String resetToken = UUID.randomUUID().toString();
 
         // ✅ Save the reset token associated with this email
-        resetTokens.put(resetToken, email);
+        resetTokens.put(resetToken, new ResetTokenData(email, LocalDateTime.now().plusMinutes(30)));
 
         // ✅ Build reset password link
         String resetLink = "http://localhost:4200/reset-password?token=" + resetToken;
@@ -131,27 +129,38 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "❌ Token and new password are required!");
         }
 
-        if (!resetTokens.containsKey(token)) {
+        ResetTokenData tokenData = resetTokens.get(token);
+
+        if (tokenData == null || tokenData.expiresAt.isBefore(LocalDateTime.now())) {
+            resetTokens.remove(token); // cleanup expired token
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "❌ Invalid or expired token!");
         }
 
-        String email = resetTokens.get(token);
+        String email = tokenData.email;
 
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "❌ User not found!"));
 
-        // ✅ Update and encode the new password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // ✅ Remove the token (used only once)
-        resetTokens.remove(token);
+        resetTokens.remove(token); // one-time use
 
         return ResponseEntity.ok(Collections.singletonMap("message", "✅ Password updated successfully!"));
     }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "❌ Email already exists!"));
+            }
+            if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "❌ Username already taken!"));
+            }
+
             AppUser user = new AppUser();
             user.setEmail(request.getEmail());
             user.setUsername(request.getUsername());
@@ -160,53 +169,22 @@ public class AuthController {
             user.setPhone(request.getPhone());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setRoles(Set.of("STUDENT"));
-            user.setEnabled(false); // not verified yet
+
 
             userRepository.save(user);
 
             // Generate token
-            String token = UUID.randomUUID().toString();
-            VerificationToken verificationToken = new VerificationToken();
-            verificationToken.setToken(token);
-            verificationToken.setUser(user);
-            verificationToken.setExpiryDate(LocalDateTime.now().plusHours(24)); // token valid for 24h
 
-            verificationTokenRepository.save(verificationToken);
 
-            // Send email
-            String link = "http://localhost:8080/userservice/auth/verify?token=" + token;
-            String body = "Welcome " + user.getFirstName() + ",<br><br>" +
-                    "Please verify your account by clicking the link below:<br>" +
-                    "<a href=\"" + link + "\">Verify Account</a><br><br>" +
-                    "Thanks,<br>The V-Learn Team";
 
-            emailService.sendEmail(user.getEmail(), "Verify your V-Learn account", body);
+            return ResponseEntity.ok(Map.of("message", "✅ Registration successful! You can now log in."));
 
-            return ResponseEntity.ok(Map.of("message", "✅ Registration successful! Please check your email to verify your account."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", "❌ Registration failed: " + e.getMessage()));
         }
     }
-    @GetMapping("/verify")
-    public ResponseEntity<?> verifyUser(@RequestParam("token") String token) {
-        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "❌ Invalid verification token"));
 
-        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "❌ Token expired"));
-        }
-
-        AppUser user = verificationToken.getUser();
-        user.setEnabled(true);
-        userRepository.save(user);
-
-        // Optionally delete token
-        verificationTokenRepository.delete(verificationToken);
-
-        return ResponseEntity.ok(Map.of("message", "✅ Account verified successfully! You can now log in."));
-    }
 
 
 

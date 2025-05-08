@@ -8,7 +8,8 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface CertificateService {
-    CertificateResponse generateCertificate(CertificateRequest request);
+    CertificateResponse generateCertificate(CertificateRequest request, String token);
+
     List<CertificateResponse> getCertificatesByUser(Long userId);
     ResponseEntity<Resource> downloadCertificate(Long id);
 }

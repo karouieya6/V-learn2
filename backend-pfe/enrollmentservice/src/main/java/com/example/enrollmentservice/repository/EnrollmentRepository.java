@@ -26,6 +26,14 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     LIMIT 1
     """, nativeQuery = true)
     List<Object[]> findMostPopularCourse();
+    @Query(value = """
+    SELECT COUNT(DISTINCT e.user_id)
+    FROM enrollments e
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.instructor_id = :instructorId
+    """, nativeQuery = true)
+    long countDistinctStudentsByInstructorId(@Param("instructorId") Long instructorId);
+
 
 
 }

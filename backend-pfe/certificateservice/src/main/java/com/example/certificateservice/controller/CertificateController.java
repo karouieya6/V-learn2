@@ -51,9 +51,11 @@ public class CertificateController {
             HttpServletRequest httpRequest
     ) {
         String token = httpRequest.getHeader("Authorization").substring(7);
-        Long userId = jwtUtil.extractUserId(token); // You must implement this
-
-        return ResponseEntity.ok(certificateService.generateCertificate(request));
+        return ResponseEntity.ok(certificateService.generateCertificate(request,token));
+    }
+    @GetMapping("/test-admin")
+    public ResponseEntity<String> testAdminAccess() {
+        return ResponseEntity.ok("You are an ADMIN");
     }
 
 

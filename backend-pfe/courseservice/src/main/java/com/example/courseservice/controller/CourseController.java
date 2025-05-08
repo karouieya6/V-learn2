@@ -147,5 +147,16 @@ public class CourseController {
                 .orElseThrow(() -> new RuntimeException("Course not found"));
         return ResponseEntity.ok(course.getTitle());
     }
+    @GetMapping("/instructor/{id}/count")
+    public ResponseEntity<Long> countCoursesByInstructor(@PathVariable Long id) {
+        long count = courseRepository.countByInstructorId(id);
+        return ResponseEntity.ok(count);
+    }
+    @GetMapping("/category/top")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getTopCategory() {
+        Map<String, Object> result = courseRepository.findTopCategory();
+        return ResponseEntity.ok(result);
+    }
 
 }

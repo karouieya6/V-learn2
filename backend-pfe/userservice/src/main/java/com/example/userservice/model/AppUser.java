@@ -22,8 +22,7 @@ public class AppUser implements UserDetails{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "enabled")
-    private boolean enabled = false; // default: not verified
+
 
     @Column(nullable = false, unique = true)
     private String username;
@@ -49,6 +48,17 @@ public class AppUser implements UserDetails{
 
     @Column(name = "profile_image_url")
     private String profileImageUrl;
+    @Column(name = "force_relogin")
+    private boolean forceReLogin = false;
+
+    // Getter and Setter
+    public boolean isForceReLogin() {
+        return forceReLogin;
+    }
+
+    public void setForceReLogin(boolean forceReLogin) {
+        this.forceReLogin = forceReLogin;
+    }
 
     private LocalDateTime createdAt = LocalDateTime.now();
     @Column(nullable = false)

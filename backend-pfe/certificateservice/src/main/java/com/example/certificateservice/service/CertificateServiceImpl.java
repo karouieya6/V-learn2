@@ -9,9 +9,7 @@ import com.example.certificateservice.util.PdfGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,20 +28,21 @@ public class CertificateServiceImpl implements CertificateService {
 
     private final CertificateRepository repository;
     private final RestTemplate restTemplate;
-    private final String CONTENT_SERVICE_URL = "http://localhost:8080/contentservice/api/lessons";
+    private final String CONTENT_SERVICE_URL = "http://contentservice/api/lessons";
 
     @Override
-    public CertificateResponse generateCertificate(CertificateRequest request) {
-        // 1. Get enrollment info
-        String enrollmentUrl = "http://localhost:8080/enrollmentservice/api/enrollments/" + request.getEnrollmentId();
-        Map<String, Object> enrollment = restTemplate.getForObject(enrollmentUrl, Map.class);
+    public CertificateResponse generateCertificate(CertificateRequest request, String token) {
+        // 1. Get enrollment info with Authorization header
+        String enrollmentUrl = "http://enrollmentservice/api/enrollments/" + request.getEnrollmentId();
+
+        Map<String, Object> enrollment = getWithAuth(enrollmentUrl, token, Map.class);
+
         if (enrollment == null || !enrollment.containsKey("userId") || !enrollment.containsKey("courseId")) {
             throw new IllegalStateException("Invalid enrollment response");
         }
 
         Long userId = Long.valueOf(enrollment.get("userId").toString());
         Long courseId = Long.valueOf(enrollment.get("courseId").toString());
-
 
         // 2. Check if certificate already exists
         Optional<Certificate> existing = repository.findByUserIdAndCourseId(userId, courseId);
@@ -52,15 +51,15 @@ public class CertificateServiceImpl implements CertificateService {
         }
 
         // 3. Check course completion
-        String checkUrl = "http://localhost:8080/contentservice/api/lessons/course/" + courseId + "/user/" + userId + "/is-complete";
-        Boolean isCompleted = restTemplate.getForObject(checkUrl, Boolean.class);
+        String checkUrl = "http://contentservice/api/lessons/course/" + courseId + "/user/" + userId + "/is-complete";
+        Boolean isCompleted = getWithAuth(checkUrl, token, Boolean.class);
         if (isCompleted == null || !isCompleted) {
             throw new IllegalStateException("Course is not completed.");
         }
 
         // 4. Get userName & courseTitle
-        String userName = restTemplate.getForObject("http://localhost:8080/userservice/user/" + userId + "/name", String.class);
-        String courseTitle = restTemplate.getForObject("http://localhost:8080/courseservice/courses/" + courseId + "/title", String.class);
+        String userName = getWithAuth("http://userservice/user/" + userId + "/name", token, String.class);
+        String courseTitle = getWithAuth("http://courseservice/courses/" + courseId + "/title", token, String.class);
 
         // 5. Generate PDF
         String fileName = "cert_" + userId + "_" + courseId + ".pdf";
@@ -88,7 +87,13 @@ public class CertificateServiceImpl implements CertificateService {
                 .build();
     }
 
-
+    private <T> T getWithAuth(String url, String token, Class<T> responseType) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        ResponseEntity<T> response = restTemplate.exchange(url, HttpMethod.GET, entity, responseType);
+        return response.getBody();
+    }
 
     @Override
     public List<CertificateResponse> getCertificatesByUser(Long userId) {

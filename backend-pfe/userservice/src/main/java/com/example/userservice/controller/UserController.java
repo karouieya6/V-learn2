@@ -6,7 +6,11 @@ import com.example.userservice.service.UserService;
 import com.example.userservice.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 @RestController
@@ -216,6 +223,7 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.getRoles().add("INSTRUCTOR");
+        user.setForceReLogin(true);
         userRepository.save(user);
 
         jdbcTemplate.update("UPDATE instructor_requests SET status = 'APPROVED' WHERE user_id = ?", userId);
@@ -248,4 +256,45 @@ public class UserController {
         Long userId = userService.getUserIdByEmail(email);
         return ResponseEntity.ok(userId);
     }
+    @GetMapping("/files/profile/{filename:.+}")
+    public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) throws MalformedURLException {
+        Path path = Paths.get("uploads/profiles").resolve(filename);
+        Resource resource = new UrlResource(path.toUri());
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .body(resource);
+    }
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<?> getStudentDashboard(Authentication authentication) {
+        String email = authentication.getName();
+        Long userId = userService.getUserIdByEmail(email);
+
+        long enrolled = userService.fetchEnrollmentsCount(userId);
+        long completed = userService.fetchCompletedCourses(userId);
+        long certificates = userService.fetchCertificatesCount(userId);
+
+        return ResponseEntity.ok(Map.of(
+                "enrolledCourses", enrolled,
+                "completedCourses", completed,
+                "certificates", certificates
+        ));
+    }
+    @GetMapping("/instructor/dashboard")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> getInstructorDashboard(Authentication authentication) {
+        String email = authentication.getName();
+        Long instructorId = userService.getUserIdByEmail(email);
+
+        long courseCount = userService.fetchInstructorCourseCount(instructorId);
+        long studentCount = userService.fetchInstructorStudentCount(instructorId);
+
+        return ResponseEntity.ok(Map.of(
+                "coursesCreated", courseCount,
+                "totalStudents", studentCount
+        ));
+    }
+
+
 }

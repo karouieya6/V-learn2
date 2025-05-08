@@ -13,6 +13,10 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
     boolean existsByEmail(String email);
     @Query("SELECT COUNT(u) FROM AppUser u WHERE :role NOT MEMBER OF u.roles")
     long countNonAdminUsers(@Param("role") String role);
+    Optional<AppUser> findByUsername(String username);
+    @Query("SELECT u FROM AppUser u WHERE :role IN elements(u.roles)")
+    List<AppUser> findAllByRole(@Param("role") String role);
+
 
     // Add this method to find active users
     List<AppUser> findByActiveTrue(); // Only return active users
