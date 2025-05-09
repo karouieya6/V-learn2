@@ -7,6 +7,8 @@ import com.example.userservice.repository.UserRepository;
 import com.example.userservice.util.JwtUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -165,6 +167,46 @@ public class UserService {
     public long fetchInstructorStudentCount(Long instructorId) {
         return restTemplate.getForObject("http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/student-count", Long.class);
     }
+    public double computeUserTotalProgress(Long userId) {
+        List<Long> courseIds = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/user/" + userId + "/courses",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Long>>() {}).getBody();
+
+        if (courseIds == null || courseIds.isEmpty()) return 0.0;
+
+        double total = 0;
+        for (Long courseId : courseIds) {
+            Double progress = restTemplate.getForObject(
+                    "http://contentservice/api/lessons/progress/user/" + userId + "/course/" + courseId,
+                    Double.class
+            );
+            total += (progress != null ? progress : 0);
+        }
+
+        return total / courseIds.size();
+    }
+    @Transactional
+    public boolean removeRoleFromUser(Long userId, String role) {
+        Optional<AppUser> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) return false;
+
+        AppUser user = userOpt.get();
+        boolean removed = user.getRoles().remove(role.toUpperCase());
+        if (removed) {
+            userRepository.save(user);
+        }
+        return removed;
+    }
+
+    public int getRoleCount(Long userId) {
+        Optional<AppUser> userOpt = userRepository.findById(userId);
+        return userOpt.map(user -> user.getRoles().size()).orElse(0);
+    }
+
+
+
 }
 
 

@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,10 +20,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import com.example.userservice.repository.UserRepository;
+import com.example.userservice.model.AppUser;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
+    private final UserRepository userRepository;
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
@@ -62,6 +66,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         Claims claims = jwtUtil.extractAllClaims(token);
         String username = claims.getSubject();
+        AppUser user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.isForceReLogin()) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("❌ You must log in again due to a role change.");
+            return;
+        }
+
+
         ArrayList<String> roleList = claims.get("roles", ArrayList.class);
 
         if (username == null || roleList == null || roleList.isEmpty()) {

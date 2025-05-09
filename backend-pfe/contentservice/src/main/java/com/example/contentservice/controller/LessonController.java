@@ -160,9 +160,16 @@ public class LessonController {
     }
     @GetMapping("/course/{courseId}/user/{userId}/is-complete")
     public boolean hasUserCompletedCourse(@PathVariable Long courseId, @PathVariable Long userId) {
-        int total = lessonRepository.countLessonsByCourse(courseId);
+        int totalLessons = lessonRepository.countByCourseId(courseId);
         int completed = lessonProgressRepository.countCompletedLessons(userId, courseId);
-        return total > 0 && completed == total;
+        return totalLessons > 0 && completed == totalLessons;
+    }
+
+    @GetMapping("/progress/user/{userId}/percentage")
+    //@PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    public ResponseEntity<Integer> getUserProgressPercentage(@PathVariable Long userId) {
+        int percentage = progressService.calculateOverallUserProgressPercentage(userId);
+        return ResponseEntity.ok(percentage);
     }
 
 

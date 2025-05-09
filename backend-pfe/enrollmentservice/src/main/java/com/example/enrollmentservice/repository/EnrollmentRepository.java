@@ -33,6 +33,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     WHERE c.instructor_id = :instructorId
     """, nativeQuery = true)
     long countDistinctStudentsByInstructorId(@Param("instructorId") Long instructorId);
+    @Query("SELECT e.courseId FROM Enrollment e WHERE e.userId = :userId")
+    List<Long> findCourseIdsByUserId(Long userId);
 
 
 

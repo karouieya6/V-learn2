@@ -28,7 +28,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/enrollments").hasRole("ADMIN")
 
                         // ✅ Get enrollments by userId - STUDENT and INSTRUCTOR can view their own
-                        .requestMatchers(HttpMethod.GET, "/api/enrollments/user/**").hasAnyRole("STUDENT", "INSTRUCTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/enrollments/user/**").hasAnyRole("STUDENT", "INSTRUCTOR","ADMIN")
 
                         // ✅ Check if enrolled - both STUDENT and INSTRUCTOR
                         .requestMatchers(HttpMethod.GET, "/api/enrollments/check").hasAnyRole("STUDENT", "INSTRUCTOR")

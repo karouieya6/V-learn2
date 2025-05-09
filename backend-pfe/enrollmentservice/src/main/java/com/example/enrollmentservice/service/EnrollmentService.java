@@ -182,6 +182,9 @@ public class EnrollmentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Enrollment not found"));
         return mapToResponse(enrollment);
     }
+    public List<Long> getCourseIdsByUserId(Long userId) {
+        return enrollmentRepository.findCourseIdsByUserId(userId);
+    }
 
 
 }

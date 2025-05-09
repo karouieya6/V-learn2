@@ -106,6 +106,12 @@ public class EnrollmentController {
     public long getTotalEnrollments() {
         return enrollmentRepository.count();
     }
+    @GetMapping("/user/{userId}/courses")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Long>> getUserEnrolledCourses(@PathVariable Long userId) {
+        List<Long> courseIds = enrollmentService.getCourseIdsByUserId(userId);
+        return ResponseEntity.ok(courseIds);
+    }
 
     @GetMapping("/admin/stats/most-popular-course")
     @PreAuthorize("hasRole('ADMIN')")

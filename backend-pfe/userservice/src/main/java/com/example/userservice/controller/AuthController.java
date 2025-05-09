@@ -59,8 +59,11 @@ public class AuthController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             String token = jwtUtil.generateToken(user);
-            user.setForceReLogin(false); // ✅ Reset the flag
-            userRepository.save(user);
+            if (user.isForceReLogin()) {
+                user.setForceReLogin(false);
+                userRepository.save(user);
+            }
+
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)

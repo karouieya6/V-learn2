@@ -153,7 +153,7 @@ public class UserController {
     /**
      * ✅ Get User by ID (Admin only)
      */
-    @GetMapping("/{id}")
+    @GetMapping("/by-id/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AppUser> getUserById(@PathVariable Long id) {
         return userRepository.findById(id)
@@ -226,10 +226,12 @@ public class UserController {
         user.setForceReLogin(true);
         userRepository.save(user);
 
-        jdbcTemplate.update("UPDATE instructor_requests SET status = 'APPROVED' WHERE user_id = ?", userId);
+        // ✅ Delete the request from instructor_requests after promotion
+        jdbcTemplate.update("DELETE FROM instructor_requests WHERE user_id = ?", userId);
 
-        return ResponseEntity.ok(Map.of("message", "✅ User promoted to INSTRUCTOR"));
+        return ResponseEntity.ok(Map.of("message", "✅ User promoted to INSTRUCTOR and request deleted"));
     }
+
 
     /**
      * ✅ Get instructor requests (Admin only)
@@ -265,36 +267,7 @@ public class UserController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(resource);
     }
-    @GetMapping("/dashboard")
-    @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<?> getStudentDashboard(Authentication authentication) {
-        String email = authentication.getName();
-        Long userId = userService.getUserIdByEmail(email);
 
-        long enrolled = userService.fetchEnrollmentsCount(userId);
-        long completed = userService.fetchCompletedCourses(userId);
-        long certificates = userService.fetchCertificatesCount(userId);
-
-        return ResponseEntity.ok(Map.of(
-                "enrolledCourses", enrolled,
-                "completedCourses", completed,
-                "certificates", certificates
-        ));
-    }
-    @GetMapping("/instructor/dashboard")
-    @PreAuthorize("hasRole('INSTRUCTOR')")
-    public ResponseEntity<?> getInstructorDashboard(Authentication authentication) {
-        String email = authentication.getName();
-        Long instructorId = userService.getUserIdByEmail(email);
-
-        long courseCount = userService.fetchInstructorCourseCount(instructorId);
-        long studentCount = userService.fetchInstructorStudentCount(instructorId);
-
-        return ResponseEntity.ok(Map.of(
-                "coursesCreated", courseCount,
-                "totalStudents", studentCount
-        ));
-    }
 
 
 }

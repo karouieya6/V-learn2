@@ -9,6 +9,7 @@ import com.example.contentservice.repository.LessonProgressRepository;
 import com.example.contentservice.repository.LessonRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -134,5 +135,34 @@ public class ProgressService {
                 completedLessonIds.contains(lesson.getId())
         )).toList();
     }
+    public int calculateOverallUserProgressPercentage(Long userId) {
+        // Step 1: Call enrollment service to get course IDs
+        String url = "http://enrollmentservice/api/enrollments/user/" + userId + "/courses";
+
+        ResponseEntity<List<Long>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Long>>() {}
+        );
+
+        List<Long> courseIds = response.getBody();
+        if (courseIds == null || courseIds.isEmpty()) {
+            return 0; // No enrolled courses = 0% progress
+        }
+
+        // Step 2: Count total lessons in enrolled courses
+        int totalLessons = lessonRepository.countByCourseIdIn(courseIds);
+
+        // Step 3: Count completed lessons
+        int completedLessons = lessonProgressRepository.countCompletedLessonsByUserIdAndCourseIds(userId, courseIds);
+
+
+
+        // Step 4: Calculate percentage
+        if (totalLessons == 0) return 0;
+        return (int) Math.round((double) completedLessons / totalLessons * 100);
+    }
+
 
 }
