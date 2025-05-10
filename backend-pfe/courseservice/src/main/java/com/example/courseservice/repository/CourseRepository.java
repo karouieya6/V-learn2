@@ -16,4 +16,5 @@ public interface CourseRepository extends JpaRepository<Course, Long>, JpaSpecif
     @Query("SELECT c.category.name AS category, COUNT(c.id) AS total FROM Course c GROUP BY c.category.name ORDER BY total DESC LIMIT 1")
     Map<String, Object> findTopCategory();
 
+
 }

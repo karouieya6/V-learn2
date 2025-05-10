@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 🔓 Public endpoints (auth)
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/user/email").hasAnyRole("INSTRUCTOR", "STUDENT", "ADMIN")
 
                         // 🔐 Protected API (must be authenticated with JWT)
                         .requestMatchers("/user/**").authenticated()

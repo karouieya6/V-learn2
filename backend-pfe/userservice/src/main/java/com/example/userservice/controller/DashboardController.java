@@ -4,16 +4,24 @@ import com.example.userservice.dto.CourseStatsResponse;
 import com.example.userservice.model.AppUser;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
+import com.example.userservice.util.ExcelExporter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.core.io.Resource;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.*;
 
 @RestController
@@ -115,10 +123,21 @@ public class DashboardController {
             );
 
             instructorLoad.add(data);
-            topInstructors.add(data);
+
+            // Only consider instructors with students for top list
+            if (studentCount > 0) {
+                topInstructors.add(data);
+            }
         }
 
+// Sort by studentCount descending
         topInstructors.sort((a, b) -> Long.compare((Long) b.get("studentCount"), (Long) a.get("studentCount")));
+
+// Return top 5
+        List<Map<String, Object>> topFive = topInstructors.subList(0, Math.min(5, topInstructors.size()));
+
+
+
 
         return ResponseEntity.ok(Map.of(
                 "totalCourses", totalCourses,
@@ -131,56 +150,56 @@ public class DashboardController {
                         "activeInstructors", activeInstructors
                 ),
                 "instructorLoad", instructorLoad,
-                "topInstructors", topInstructors.subList(0, Math.min(5, topInstructors.size()))
+                "topInstructors", topFive
         ));
-    }
 
+    }
     @GetMapping("/admin/students")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getAllStudents(HttpServletRequest request) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", request.getHeader("Authorization"));
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        List<AppUser> students = userRepository.findAllByRole("STUDENT");
+    public ResponseEntity<?> getStudents(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AppUser> students = userRepository.findByUsernameContainingIgnoreCase(search, pageable);
 
         List<Map<String, Object>> result = new ArrayList<>();
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
         for (AppUser student : students) {
             long totalCourses = 0;
             int progress = 0;
 
-            // Safely call enrollmentservice
             try {
-                ResponseEntity<Long> response = restTemplate.exchange(
+                totalCourses = restTemplate.exchange(
                         "http://enrollmentservice/api/enrollments/user/" + student.getId() + "/count",
-                        HttpMethod.GET, entity, Long.class);
-                totalCourses = response.getBody() != null ? response.getBody() : 0L;
-            } catch (Exception ex) {
-                System.err.println("Failed to fetch totalCourses for student " + student.getId() + ": " + ex.getMessage());
-            }
+                        HttpMethod.GET, entity, Long.class).getBody();
+            } catch (Exception ignored) {}
 
-            // Safely call contentservice
             try {
-                ResponseEntity<Integer> response = restTemplate.exchange(
+                progress = restTemplate.exchange(
                         "http://contentservice/api/lessons/progress/user/" + student.getId() + "/percentage",
-                        HttpMethod.GET, entity, Integer.class);
-                progress = response.getBody() != null ? response.getBody() : 0;
-            } catch (Exception ex) {
-                System.err.println("Failed to fetch progress for student " + student.getId() + ": " + ex.getMessage());
-            }
+                        HttpMethod.GET, entity, Integer.class).getBody();
+            } catch (Exception ignored) {}
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("id", student.getId());
-            data.put("username", student.getUsername());
-            data.put("email", student.getEmail());
-            data.put("totalCourses", totalCourses);
-            data.put("progress", progress);
-            data.put("joinDate", student.getCreatedAt());
-
-            result.add(data);
+            result.add(Map.of(
+                    "id", student.getId(),
+                    "username", student.getUsername(),
+                    "email", student.getEmail(),
+                    "totalCourses", totalCourses,
+                    "progress", progress,
+                    "joinDate", student.getCreatedAt()
+            ));
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(Map.of(
+                "students", result,
+                "totalPages", students.getTotalPages(),
+                "currentPage", students.getNumber()
+        ));
     }
 
 
@@ -203,32 +222,31 @@ public class DashboardController {
             return ResponseEntity.ok(Map.of("message", "✅ User deleted (only had STUDENT role)"));
         }
     }
-
     @GetMapping("/admin/instructors")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getAllInstructors(HttpServletRequest request) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", request.getHeader("Authorization"));
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
+    public ResponseEntity<?> getInstructors(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AppUser> instructors = userRepository.findByUsernameContainingIgnoreCase(search, pageable);
 
-        List<AppUser> instructors = userRepository.findAllByRole("INSTRUCTOR");
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (AppUser instr : instructors) {
-            long totalCourses = 0;
-            long studentCount = 0;
-
+            long totalCourses = 0, studentCount = 0;
             try {
                 totalCourses = restTemplate.exchange(
                         "http://courseservice/api/courses/instructor/" + instr.getId() + "/count",
                         HttpMethod.GET, entity, Long.class).getBody();
-
                 studentCount = restTemplate.exchange(
                         "http://enrollmentservice/api/enrollments/instructor/" + instr.getId() + "/student-count",
                         HttpMethod.GET, entity, Long.class).getBody();
-            } catch (Exception e) {
-                System.err.println("⚠️ Error fetching data for instructor " + instr.getId() + ": " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
 
             result.add(Map.of(
                     "id", instr.getId(),
@@ -239,8 +257,14 @@ public class DashboardController {
             ));
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(Map.of(
+                "instructors", result,
+                "totalPages", instructors.getTotalPages(),
+                "currentPage", instructors.getNumber()
+        ));
     }
+
+
     @DeleteMapping("/admin/instructors/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteInstructor(@PathVariable Long id, HttpServletRequest request) {
@@ -297,16 +321,41 @@ public class DashboardController {
      */
     @GetMapping("admin/instructor-requests")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<?> getInstructorRequests() {
+    public ResponseEntity<?> getInstructorRequests(
+            @RequestParam(defaultValue = "") String search, // Search by username
+            @RequestParam(defaultValue = "newest") String sortBy // Sort by "newest" or "oldest"
+    ) {
+        // Base query for fetching instructor requests with status 'PENDING'
         String sql = """
-            SELECT u.id, u.email, u.username, ir.status
-            FROM instructor_requests ir
-            JOIN users u ON u.id = ir.user_id
-            WHERE ir.status = 'PENDING'
-        """;
-        List<Map<String, Object>> requests = jdbcTemplate.queryForList(sql);
+    SELECT u.id, u.email, u.username, ir.status, ir.created_at
+    FROM instructor_requests ir
+    JOIN users u ON u.id = ir.user_id
+    WHERE ir.status = 'PENDING'
+    """;
+
+        // Prepare the parameters list
+        List<Object> params = new ArrayList<>();
+
+        // Add search condition if the search term is provided
+        if (!search.isEmpty()) {
+            sql += " AND u.username LIKE ?";
+            params.add("%" + search + "%"); // Wildcard for searching by username
+        }
+
+        // Sort by creation date - newest or oldest
+        if ("oldest".equalsIgnoreCase(sortBy)) {
+            sql += " ORDER BY ir.created_at ASC"; // Sort by oldest
+        } else {
+            sql += " ORDER BY ir.created_at DESC"; // Default: Sort by newest
+        }
+
+        // Execute the query with the parameters
+        List<Map<String, Object>> requests = jdbcTemplate.queryForList(sql, params.toArray());
+
         return ResponseEntity.ok(requests);
     }
+
+
     @PutMapping("admin/reject-instructor/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> rejectInstructor(@PathVariable Long userId) {
@@ -317,6 +366,69 @@ public class DashboardController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Request not found"));
         }
     }
+    @GetMapping("/admin/course-engagement-export")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> exportCourseEngagement(HttpServletRequest request) {
+
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        // Fetch total courses
+        long totalCourses = restTemplate.exchange(
+                "http://courseservice/api/courses/count",
+                HttpMethod.GET, entity, Long.class).getBody();
+
+        // Fetch total enrollments
+        long totalEnrollments = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/admin/stats/total-enrollments",
+                HttpMethod.GET, entity, Long.class).getBody();
+
+        // Fetch most popular course
+        CourseStatsResponse mostPopularCourse = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/admin/stats/most-popular-course",
+                HttpMethod.GET, entity, CourseStatsResponse.class).getBody();
+
+        // Fetch active instructors
+        long activeInstructors = jdbcTemplate.queryForObject("SELECT COUNT(DISTINCT instructor_id) FROM courses", Long.class);
+
+        // Fetch active students
+        long activeStudents = jdbcTemplate.queryForObject("SELECT COUNT(DISTINCT user_id) FROM enrollments WHERE status = 'ENROLLED'", Long.class);
+
+        // Prepare data for Excel export
+        List<String[]> rows = List.of(
+                new String[] { "Metric", "Value" },
+                new String[] { "Total Active Courses", String.valueOf(totalCourses) },
+                new String[] { "Total Enrollments", String.valueOf(totalEnrollments) },
+                new String[] { "Most Popular Course", mostPopularCourse != null ? mostPopularCourse.getCourseTitle() : "N/A" },
+                new String[] { "Active Instructors", String.valueOf(activeInstructors) },
+                new String[] { "Active Students", String.valueOf(activeStudents) }
+        );
+
+        // Generate the Excel file
+        byte[] excelData;
+        try {
+            excelData = ExcelExporter.generateDashboardStatsExcel(rows);
+        } catch (IOException e) {
+            // Provide a detailed error message
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new InputStreamResource(new ByteArrayInputStream("Error generating Excel file.".getBytes())));
+        }
+
+        // Convert byte[] to InputStreamResource for download
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(excelData);
+        InputStreamResource resource = new InputStreamResource(inputStream);
+
+        // Set headers for file download
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.add("Content-Disposition", "attachment; filename=course_engagement_report.xlsx");
+
+        return ResponseEntity.ok()
+                .headers(responseHeaders)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
+
 
 
 }

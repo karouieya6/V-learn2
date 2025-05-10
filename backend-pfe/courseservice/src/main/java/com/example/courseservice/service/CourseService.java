@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
@@ -38,19 +39,27 @@ public class CourseService {
     private HttpServletRequest request;
     private final CourseRepository courseRepository;
 
-    public CourseResponse createCourse(CourseCreateRequest request) {
-        Category category = categoryRepository.findById(request.getCategoryId())
+    public CourseResponse createCourse(CourseCreateRequest requestDto) {
+        Category category = categoryRepository.findById(requestDto.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
+        // 🧠 Extract email and token from request
+        String email = request.getUserPrincipal().getName(); // or from SecurityContext
+        String token = request.getHeader("Authorization");
+
+        // ✅ Fetch instructor ID securely
+        Long instructorId = fetchInstructorIdFromUserService(email, token);
+
         Course course = new Course();
-        course.setTitle(request.getTitle());
-        course.setDescription(request.getDescription());
-        course.setInstructorId(request.getInstructorId());
+        course.setTitle(requestDto.getTitle());
+        course.setDescription(requestDto.getDescription());
+        course.setInstructorId(instructorId);
         course.setCategory(category);
 
         Course saved = courseRepository.save(course);
-        return mapToResponse(saved); // Make sure this method exists
+        return mapToResponse(saved);
     }
+
     private CourseResponse mapToResponse(Course course) {
         CourseResponse response = new CourseResponse();
         response.setId(course.getId());
@@ -87,11 +96,11 @@ public class CourseService {
     }
 
 
-    public CourseResponse updateCourse(Long courseId, CourseUpdateRequest request, String instructorEmail) {
+    public CourseResponse updateCourse(Long courseId, CourseUpdateRequest request, String instructorEmail, String token) {
         System.out.println("📨 Instructor email from token: " + instructorEmail);
 
         // ✅ Fetch instructor ID via API Gateway
-        Long instructorId = fetchInstructorIdFromUserService(instructorEmail);
+        Long instructorId = fetchInstructorIdFromUserService(instructorEmail, token);
         System.out.println("🧠 Instructor ID from UserService: " + instructorId);
 
         // ✅ Load the course
@@ -121,13 +130,13 @@ public class CourseService {
 
 
 
-    public void deleteCourse(Long courseId, String instructorEmail) {
+    public void deleteCourse(Long courseId, String instructorEmail, String token) {
         // ✅ Fetch course
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
         // ✅ Fetch instructor ID via API Gateway
-        Long instructorId = fetchInstructorIdFromUserService(instructorEmail);
+        Long instructorId = fetchInstructorIdFromUserService(instructorEmail,token);
 
         // 🔐 Check ownership
         if (course.getInstructorId() != instructorId){
@@ -154,16 +163,26 @@ public class CourseService {
         Page<Course> page = courseRepository.findAll(spec, pageable);
         return page.map(this::mapToResponse);
     }
-    public Long fetchInstructorIdFromUserService(String email) {
+    public Long fetchInstructorIdFromUserService(String email, String token) {
         String url = "http://localhost:8080/userservice/user/email/" + email;
 
         try {
-            HttpHeaders headers = new HttpHeaders();
-            String token = request.getHeader("Authorization");
-            headers.set("Authorization", token);
+            // Check if the token is in "Bearer <token>" format
+            if (token == null || !token.startsWith("Bearer ")) {
+                throw new IllegalArgumentException("Invalid token format. Token must start with 'Bearer '.");
+            }
 
+            // Remove the "Bearer " prefix to get the actual token
+            String actualToken = token.substring(7);
+
+            // Set up the headers with the correct authorization format
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + actualToken);
+
+            // Create HttpEntity with headers
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
+            // Send request and capture response
             ResponseEntity<Long> response = new RestTemplate().exchange(
                     url,
                     HttpMethod.GET,
@@ -171,12 +190,20 @@ public class CourseService {
                     Long.class
             );
 
+            // Return the response body (Instructor ID)
             return response.getBody();
+        } catch (HttpClientErrorException.Forbidden e) {
+            throw new RuntimeException("403 Forbidden: Access denied to user service.");
+        } catch (HttpClientErrorException.Unauthorized e) {
+            throw new RuntimeException("401 Unauthorized: Invalid or missing token.");
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Could not fetch instructor ID from user service");
+            throw new RuntimeException("Could not fetch instructor ID from user service: " + e.getMessage());
         }
     }
+
 
 
 }

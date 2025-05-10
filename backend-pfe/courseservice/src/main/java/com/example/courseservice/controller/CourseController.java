@@ -6,6 +6,7 @@ import com.example.courseservice.dto.CourseUpdateRequest;
 import com.example.courseservice.model.Course;
 import com.example.courseservice.repository.CourseRepository;
 import com.example.courseservice.service.CourseService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -37,25 +38,34 @@ public class CourseController {
     private String getAuthenticatedEmail() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
+    @Autowired
+    private HttpServletRequest httpRequest;
 
     /**
      * ✅ Create a New Course (Only for INSTRUCTORS)
      */
-    @PreAuthorize("hasRole('INSTRUCTOR')")
     @PostMapping("/create")
-    public ResponseEntity<CourseResponse> createCourse(@Valid @RequestBody CourseCreateRequest request) {
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<CourseResponse> createCourse(@Valid @RequestBody CourseCreateRequest courseCreateRequest) {
         try {
             String email = SecurityContextHolder.getContext().getAuthentication().getName();
-            Long instructorId = courseService.fetchInstructorIdFromUserService(email);
-            request.setInstructorId(instructorId); // Inject it manually
+            String token = httpRequest.getHeader("Authorization");
 
-            CourseResponse created = courseService.createCourse(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+
+            Long instructorId = courseService.fetchInstructorIdFromUserService(email, token);
+            CourseResponse createdCourse = courseService.createCourse(courseCreateRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
+
+
     @GetMapping("/admin/stats/total-courses")
     @PreAuthorize("hasRole('ADMIN')")
     public long getTotalCourses() {
@@ -92,7 +102,6 @@ public class CourseController {
      * ✅ Update a Course (Only for INSTRUCTORS)
      */
 
-
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('INSTRUCTOR')")
     public ResponseEntity<CourseResponse> updateCourse(
@@ -100,10 +109,15 @@ public class CourseController {
             @RequestBody CourseUpdateRequest request) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        CourseResponse updated = courseService.updateCourse(id, request, email);
+        String token = httpRequest.getHeader("Authorization");
+
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        CourseResponse updated = courseService.updateCourse(id, request, email, token);
         return ResponseEntity.ok(updated);
     }
-
 
 
     /**
@@ -113,9 +127,16 @@ public class CourseController {
     @PreAuthorize("hasAuthority('INSTRUCTOR')")
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        courseService.deleteCourse(id, email);
+        String token = httpRequest.getHeader("Authorization");
+
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        courseService.deleteCourse(id, email, token);
         return ResponseEntity.noContent().build();
     }
+
 
 
     @GetMapping("/category/{categoryId}")

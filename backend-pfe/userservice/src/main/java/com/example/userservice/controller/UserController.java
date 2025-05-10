@@ -208,10 +208,12 @@ public class UserController {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        jdbcTemplate.update("INSERT INTO instructor_requests (user_id) VALUES (?)", user.getId());
+        // Insert the instructor request with user_id and the current timestamp
+        jdbcTemplate.update("INSERT INTO instructor_requests (user_id, created_at) VALUES (?, CURRENT_TIMESTAMP)", user.getId());
 
         return ResponseEntity.ok(Map.of("message", "✅ Request submitted for instructor role."));
     }
+
 
     /**
      * ✅ Approve instructor (Admin only)
