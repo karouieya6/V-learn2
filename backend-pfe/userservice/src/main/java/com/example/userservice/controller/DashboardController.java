@@ -163,7 +163,8 @@ public class DashboardController {
             HttpServletRequest request
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<AppUser> students = userRepository.findByUsernameContainingIgnoreCase(search, pageable);
+        Page<AppUser> students = userRepository.findByRoleAndUsernameContainingIgnoreCase("STUDENT", search, pageable);
+
 
         List<Map<String, Object>> result = new ArrayList<>();
         HttpHeaders headers = createHeaders(request);
@@ -231,7 +232,8 @@ public class DashboardController {
             HttpServletRequest request
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<AppUser> instructors = userRepository.findByUsernameContainingIgnoreCase(search, pageable);
+        Page<AppUser> instructors = userRepository.findByRoleAndUsernameContainingIgnoreCase("INSTRUCTOR", search, pageable);
+
 
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);

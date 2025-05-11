@@ -20,6 +20,12 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
     List<AppUser> findAllByRole(@Param("role") String role);
 
     Page<AppUser> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
+    @Query("SELECT u FROM AppUser u WHERE :role IN elements(u.roles) AND LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<AppUser> findByRoleAndUsernameContainingIgnoreCase(
+            @Param("role") String role,
+            @Param("search") String search,
+            Pageable pageable
+    );
 
     // Add this method to find active users
     List<AppUser> findByActiveTrue(); // Only return active users
