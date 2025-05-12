@@ -25,6 +25,13 @@ export const routes: Routes = [
       import('./features/student/dashboard/student.route').then(m => m.STUDENT_ROUTES)
 
   },
+  {
+    path: 'admin',
+    loadChildren: () =>
+      import('./features/admin/dashboard/admin.route').then(m => m.ADMIN_ROUTES),
+    canActivate: [RoleGuard],
+    data: { roles: ['ADMIN'] }
+  },
 
  
 

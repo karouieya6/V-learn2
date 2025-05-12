@@ -11,18 +11,17 @@
   }
   
   .main-wrapper {
-    display: flex;
     flex-grow: 1;
-    margin-top: 90px; // adjust based on your header height
+    margin-top: 40px; 
   }
   
   app-student-sidebar {
     width: 260px;
     flex-shrink: 0;
-    background-color: #1e1e2f; // or match Eduport
+    background-color: #1e1e2f; 
     min-height: 100vh;
     position: sticky;
-    top: 90px; // match header height
+    top: 90px; 
   }
   
   .main-content-area {
@@ -41,4 +40,10 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
  
+  .confirm-modal .modal-content {
+    background: white !important;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  }
   

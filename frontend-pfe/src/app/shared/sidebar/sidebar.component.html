@@ -1,31 +1,29 @@
-<ul class="nav flex-column px-2 py-3">
-  <li class="nav-item mb-1">
-    <a class="nav-link text-white" (click)="goToDashboard()">
-      <i class="fas fa-chart-line me-2"></i> Dashboard
-    </a>
-  </li>
-
-  <li class="nav-item mb-1">
-    <a class="nav-link text-white" (click)="goToMyCourses()">
-      <i class="fas fa-book me-2"></i> My Courses
-    </a>
-  </li>
-
-  <li class="nav-item mb-1">
-    <a class="nav-link text-white" (click)="goToResumeCourse()">
-      <i class="fas fa-play-circle me-2"></i> Resume Course
-    </a>
-  </li>
-
-  <li class="nav-item mb-1">
-    <a class="nav-link text-white" (click)="goToEditProfile()">
-      <i class="fas fa-user-edit me-2"></i> Edit Profile
-    </a>
-  </li>
-
-  <li class="nav-item mt-3">
-    <button class="btn btn-outline-light w-100" (click)="logout()">
-      <i class="fas fa-sign-out-alt me-2"></i> Sign Out
-    </button>
-  </li>
-</ul>
+<div class="student-sidebar bg-white border rounded shadow-sm p-3">
+  <ul class="nav flex-column">
+    <li class="nav-item mb-2">
+      <a class="nav-link d-flex align-items-center" (click)="goToDashboard()">
+        <i class="fas fa-chart-line me-2"></i> Dashboard
+      </a>
+    </li>
+    <li class="nav-item mb-2">
+      <a class="nav-link d-flex align-items-center" (click)="goToMyCourses()">
+        <i class="fas fa-book me-2"></i> My Courses
+      </a>
+    </li>
+    <li class="nav-item mb-2">
+      <a class="nav-link d-flex align-items-center" (click)="goToResumeCourse()">
+        <i class="fas fa-play-circle me-2"></i> Resume Course
+      </a>
+    </li>
+    <li class="nav-item mb-2">
+      <a class="nav-link d-flex align-items-center" (click)="goToEditProfile()">
+        <i class="fas fa-user-edit me-2"></i> Edit Profile
+      </a>
+    </li>
+    <li class="nav-item mt-4">
+      <button class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center" (click)="logout()">
+        <i class="fas fa-sign-out-alt me-2"></i> Sign Out
+      </button>
+    </li>
+  </ul>
+</div>

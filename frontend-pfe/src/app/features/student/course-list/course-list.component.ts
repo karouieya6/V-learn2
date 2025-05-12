@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient,HttpHeaders } from '@angular/common/http';
 import { NgbPaginationModule, NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
@@ -12,14 +12,24 @@ export class CourseListComponent implements OnInit {
   courseList: any[] = [];
 
   constructor(private http: HttpClient) {}
-
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+  getAuthHeaders(): HttpHeaders {
+    const token = this.getToken();
+    return new HttpHeaders({
+      Authorization: `Bearer ${token}`,
+    });
+  }
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const userId = user?.id;
-
-    this.http.get<any[]>(`http://localhost:8080/enrollmentservice/enrollments/user/${userId}`).subscribe({
+    const headers = this.getAuthHeaders();
+    this.http.get<any>(`http://localhost:8080/enrollmentservice/api/enrollments/user/${userId}`, { headers }).subscribe({
       next: (courses) => {
-        this.courseList = courses;
+        console.log("courses",courses.data);
+        
+        this.courseList = courses.data.content;
       },
       error: () => {
         console.error('Failed to load enrolled courses.');

@@ -2,7 +2,8 @@
 <app-header-three *ngIf="showHeaderFooter "></app-header-three>
 
 <!-- Page content -->
+<div class="main-wrapper pt-5" style="padding-top: 100px;">
 <router-outlet></router-outlet>
-
+</div>
 <!-- Show footer only if allowed -->
 <app-footer *ngIf="showHeaderFooter"></app-footer>

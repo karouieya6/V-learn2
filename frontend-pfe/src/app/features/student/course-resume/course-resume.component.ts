@@ -33,7 +33,7 @@ export class CourseResumeComponent implements OnInit {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const userId = user.id;
 
-    this.http.get<any[]>(`http://localhost:8080/enrollmentservice/enrollments/user/${userId}`)
+    this.http.get<any[]>(`http://localhost:8080/enrollmentservice/api/enrollments/user/${userId}`)
       .subscribe({
         next: (data) => this.courses = data,
         error: () => console.error('Failed to load courses'),

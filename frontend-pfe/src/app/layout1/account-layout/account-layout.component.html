@@ -1,9 +1,20 @@
 <div class="d-flex" style="min-height: 100vh; margin-top: 80px;">
+  <!-- Student sidebar -->
   <app-student-sidebar
     *ngIf="userRole === 'STUDENT'"
     class="d-none d-md-block"
   ></app-student-sidebar>
 
+  <!-- Admin sidebar -->
+  <app-admin-sidebar
+    *ngIf="userRole === 'ADMIN'"
+    class="d-none d-md-block"
+  ></app-admin-sidebar>
+
+  <!-- Instructor sidebar -->
+
+
+  <!-- Main content -->
   <main class="flex-grow-1 px-3">
     <router-outlet></router-outlet>
   </main>
