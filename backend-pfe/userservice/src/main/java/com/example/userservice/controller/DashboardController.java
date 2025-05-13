@@ -23,6 +23,7 @@ import org.springframework.core.io.Resource;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/dashboard")
@@ -37,36 +38,43 @@ public class DashboardController {
     private JdbcTemplate jdbcTemplate;
 
     // 🧑 STUDENT DASHBOARD
-    @GetMapping("/student")
-    @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<?> getStudentDashboard(Authentication authentication) {
-        String email = authentication.getName();
-        Long userId = userService.getUserIdByEmail(email);
-
-        long enrolled = userService.fetchEnrollmentsCount(userId);
-        long completed = userService.fetchCompletedCourses(userId);
-        long certificates = userService.fetchCertificatesCount(userId);
-
-        return ResponseEntity.ok(Map.of(
-                "enrolledCourses", enrolled,
-                "completedCourses", completed,
-                "certificates", certificates
-        ));
-    }
-
-    // 👨‍🏫 INSTRUCTOR DASHBOARD
-    @GetMapping("/instructor")
+    @GetMapping("/instructor/overview")
     @PreAuthorize("hasRole('INSTRUCTOR')")
-    public ResponseEntity<?> getInstructorDashboard(Authentication authentication) {
-        String email = authentication.getName();
-        Long instructorId = userService.getUserIdByEmail(email);
+    public ResponseEntity<?> getInstructorDashboard(HttpServletRequest request, Authentication authentication) {
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        long courseCount = userService.fetchInstructorCourseCount(instructorId);
-        long studentCount = userService.fetchInstructorStudentCount(instructorId);
+        // Fetch the authenticated instructor's ID
+        String instructorEmail = authentication.getName();
+        AppUser instructor = userRepository.findByEmail(instructorEmail)
+                .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
+        // Fetch the total number of courses taught by the instructor
+        long totalCourses = restTemplate.exchange(
+                "http://courseservice/api/courses/instructor/" + instructor.getId() + "/count",
+                HttpMethod.GET, entity, Long.class).getBody();
+
+        // Fetch the total number of students enrolled in the instructor's courses
+        long totalEnrolledStudents = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/instructor/" + instructor.getId() + "/student-count",
+                HttpMethod.GET, entity, Long.class).getBody();
+
+        // Fetch the instructor's courses sorted by the number of students enrolled
+        List<CourseStatsResponse> popularCourses = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/instructor/" + instructor.getId() + "/most-popular-courses",
+                HttpMethod.GET, entity, List.class).getBody();
+
+        // Get the top 5 most popular courses based on student enrollments
+        List<CourseStatsResponse> top5PopularCourses = popularCourses.stream()
+                .sorted((course1, course2) -> Long.compare(course2.getEnrollmentCount(), course1.getEnrollmentCount()))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        // Prepare and return the instructor's dashboard data
         return ResponseEntity.ok(Map.of(
-                "coursesCreated", courseCount,
-                "totalStudents", studentCount
+                "totalCourses", totalCourses,
+                "totalEnrolledStudents", totalEnrolledStudents,
+                "top5PopularCourses", top5PopularCourses
         ));
     }
 

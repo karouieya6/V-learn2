@@ -13,6 +13,7 @@ public class CourseCreateRequest {
     private String title;
 
     private String description;
+    private String status;
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;

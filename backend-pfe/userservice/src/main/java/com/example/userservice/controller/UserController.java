@@ -154,7 +154,8 @@ public class UserController {
      * ✅ Get User by ID (Admin only)
      */
     @GetMapping("/by-id/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'STUDENT')")
+
     public ResponseEntity<AppUser> getUserById(@PathVariable Long id) {
         return userRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -255,6 +256,8 @@ public class UserController {
      * ✅ Get user ID by email (Instructors only)
      */
     @GetMapping("/email")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'STUDENT', 'ADMIN')")
+
     public ResponseEntity<Long> getUserIdFromToken(@RequestHeader("Authorization") String token) {
         String email = jwtUtil.extractUsername(token.substring(7));
         Long userId = userService.getUserIdByEmail(email);

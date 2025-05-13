@@ -7,6 +7,7 @@ import lombok.Setter;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
 import com.example.enrollmentservice.model.EnrollmentStatus;
+import org.springframework.security.core.userdetails.User;
 
 import java.time.LocalDateTime;
 
@@ -21,9 +22,11 @@ public class Enrollment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
-
+    @Column(name = "course_id", nullable = false)
     private Long courseId;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
 
 

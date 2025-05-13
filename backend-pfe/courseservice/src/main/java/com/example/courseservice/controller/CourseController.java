@@ -19,9 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +84,12 @@ public class CourseController {
         List<CourseResponse> list = courseService.getAllCourses();
         return ResponseEntity.ok(list);
     }
+    @GetMapping("/list")
+    public ResponseEntity<List<CourseResponse>> getPublicCourseList() {
+        List<CourseResponse> courseList = courseService.getAllCourses();
+        return ResponseEntity.ok(courseList);
+    }
+
 
 
     /**
@@ -162,7 +166,7 @@ public class CourseController {
     public long countCourses() {
         return courseRepository.count();
     }
-    @GetMapping("/api/courses/{id}/title")
+    @GetMapping("/{id}/title")
     public ResponseEntity<String> getCourseTitle(@PathVariable Long id) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found"));

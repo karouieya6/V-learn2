@@ -12,20 +12,35 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
-    EnrollmentResponse getEnrollmentById(Long id);
+
+    // Find enrollment by its ID
+    Optional<Enrollment> findById(Long id);
+
+    // Check if the user is already enrolled in a course
+    boolean existsByUserIdAndCourseId(Long userId, Long courseId);
+
+    // Correct method to check if the user is already enrolled in a course
     Optional<Enrollment> findByUserIdAndCourseId(Long userId, Long courseId);
+
+    // Paginate enrollments for a given user
     Page<Enrollment> findByUserId(Long userId, Pageable pageable);
+
+    // Correct query to count enrollments for a specific user
     @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.userId = :userId")
     long countByUserId(@Param("userId") Long userId);
+
+    // Query to fetch the most popular course along with its title
     @Query(value = """
-    SELECT e.course_id, c.title, COUNT(e.id) AS enrollments
-    FROM enrollments e
-    JOIN courses c ON e.course_id = c.id
-    GROUP BY e.course_id, c.title
-    ORDER BY enrollments DESC
-    LIMIT 1
+        SELECT e.course_id, c.title, COUNT(e.id) AS enrollments
+        FROM enrollments e
+        JOIN courses c ON e.course_id = c.id
+        GROUP BY e.course_id, c.title
+        ORDER BY enrollments DESC
+        LIMIT 1
     """, nativeQuery = true)
     List<Object[]> findMostPopularCourse();
+
+    // Query to count distinct students for a specific instructor using course_id and instructor_id
     @Query(value = """
     SELECT COUNT(DISTINCT e.user_id)
     FROM enrollments e
@@ -33,9 +48,17 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     WHERE c.instructor_id = :instructorId
     """, nativeQuery = true)
     long countDistinctStudentsByInstructorId(@Param("instructorId") Long instructorId);
+
+    // Fetch list of course IDs by userId
     @Query("SELECT e.courseId FROM Enrollment e WHERE e.userId = :userId")
     List<Long> findCourseIdsByUserId(Long userId);
 
-
-
+    // Query to count enrollments by instructorId using course_id and instructor_id
+    @Query(value = """
+    SELECT COUNT(e)
+    FROM enrollments e
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.instructor_id = :instructorId
+    """, nativeQuery = true)
+    long countByInstructorId(@Param("instructorId") Long instructorId);
 }

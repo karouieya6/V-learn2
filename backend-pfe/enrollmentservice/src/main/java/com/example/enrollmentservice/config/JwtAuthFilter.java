@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -52,18 +53,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // ✅ Extract data from token
         Claims claims = jwtUtil.extractAllClaims(token);
         String username = claims.getSubject();
-        ArrayList<String> role = claims.get("roles", ArrayList.class);
-        String roleName = role.get(0);
+        ArrayList<String> roles = claims.get("roles", ArrayList.class);
 
-        if (username == null || role == null) {
+        if (username == null || roles == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token payload");
             return;
         }
 
-        // ✅ Convert role to authority
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + roleName);
+        List<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .toList();
 
-        User userDetails = new User(username, "", Collections.singletonList(authority));
+        User userDetails = new User(username, "", authorities);
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails,
@@ -76,7 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // ✅ Debug logs
         System.out.println("🧠 Authenticated: " + username);
-        System.out.println("🛡 Role: ROLE_" + role);
+        System.out.println("🛡 Role: ROLE_" + roles);
         System.out.println("✅ Authorities: " + authentication.getAuthorities());
 
         filterChain.doFilter(request, response);

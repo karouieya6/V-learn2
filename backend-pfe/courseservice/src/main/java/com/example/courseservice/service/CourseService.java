@@ -29,6 +29,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -38,6 +39,8 @@ public class CourseService {
     @Autowired
     private HttpServletRequest request;
     private final CourseRepository courseRepository;
+    @Autowired
+    private RestTemplate restTemplate;
 
     public CourseResponse createCourse(CourseCreateRequest requestDto) {
         Category category = categoryRepository.findById(requestDto.getCategoryId())
@@ -55,25 +58,38 @@ public class CourseService {
         course.setDescription(requestDto.getDescription());
         course.setInstructorId(instructorId);
         course.setCategory(category);
-
+        course.setStatus("PENDING");
         Course saved = courseRepository.save(course);
         return mapToResponse(saved);
     }
-
     private CourseResponse mapToResponse(Course course) {
         CourseResponse response = new CourseResponse();
         response.setId(course.getId());
         response.setTitle(course.getTitle());
         response.setDescription(course.getDescription());
-        response.setInstructorId(course.getInstructorId());
+        response.setStatus(course.getStatus());
 
-        // 🛠 Check for null before accessing category
         if (course.getCategory() != null) {
             response.setCategoryId(course.getCategory().getId());
             response.setCategoryName(course.getCategory().getName());
         } else {
             response.setCategoryId(null);
-            response.setCategoryName("Unknown"); // or leave it null
+            response.setCategoryName("Unknown");
+        }
+
+        // ✅ Fetch instructor full name from UserService
+        try {
+            String url = "http://localhost:8080/userservice/user/by-id/" + course.getInstructorId();
+            ResponseEntity<Map> userResponse = restTemplate.getForEntity(url, Map.class);
+            Map<?, ?> user = userResponse.getBody();
+            if (user != null) {
+                String fullName = user.get("firstName") + " " + user.get("lastName");
+                response.setInstructorName(fullName);
+            } else {
+                response.setInstructorName("Unknown");
+            }
+        } catch (Exception e) {
+            response.setInstructorName("Unavailable");
         }
 
         return response;
@@ -83,7 +99,8 @@ public class CourseService {
 
 
     public List<CourseResponse> getAllCourses() {
-        return courseRepository.findAll().stream()
+        return courseRepository.findAll()
+                .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -164,45 +181,33 @@ public class CourseService {
         return page.map(this::mapToResponse);
     }
     public Long fetchInstructorIdFromUserService(String email, String token) {
-        String url = "http://localhost:8080/userservice/user/email/" + email;
+        HttpHeaders headers = new HttpHeaders();
 
-        try {
-            // Check if the token is in "Bearer <token>" format
-            if (token == null || !token.startsWith("Bearer ")) {
-                throw new IllegalArgumentException("Invalid token format. Token must start with 'Bearer '.");
-            }
+        // Ensure token starts with "Bearer "
+        if (!token.startsWith("Bearer ")) {
+            token = "Bearer " + token;
+        }
 
-            // Remove the "Bearer " prefix to get the actual token
-            String actualToken = token.substring(7);
+        headers.set("Authorization", token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            // Set up the headers with the correct authorization format
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + actualToken);
+        String url = "http://localhost:8080/userservice/user/email";
 
-            // Create HttpEntity with headers
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
+        ResponseEntity<Long> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                Long.class
+        );
 
-            // Send request and capture response
-            ResponseEntity<Long> response = new RestTemplate().exchange(
-                    url,
-                    HttpMethod.GET,
-                    entity,
-                    Long.class
-            );
-
-            // Return the response body (Instructor ID)
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
             return response.getBody();
-        } catch (HttpClientErrorException.Forbidden e) {
-            throw new RuntimeException("403 Forbidden: Access denied to user service.");
-        } catch (HttpClientErrorException.Unauthorized e) {
-            throw new RuntimeException("401 Unauthorized: Invalid or missing token.");
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException(e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Could not fetch instructor ID from user service: " + e.getMessage());
+        } else {
+            throw new RuntimeException("❌ Access denied to user service.");
         }
     }
+
+
 
 
 

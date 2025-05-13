@@ -27,7 +27,8 @@ public class Course {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt ;
-
+    @Column(nullable = false)
+    private String status;
     @Column(name = "updated_at")
     private LocalDateTime updatedAt ;
     @PrePersist

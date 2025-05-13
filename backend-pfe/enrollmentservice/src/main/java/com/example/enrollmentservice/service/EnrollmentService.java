@@ -38,11 +38,13 @@ public class EnrollmentService {
     public EnrollmentResponse enrollUser(EnrollmentRequest request, HttpServletRequest httpRequest) {
         Long userId = fetchUserIdFromUserService(httpRequest);
 
+        // Check if user is already enrolled in this course by using only IDs
         Optional<Enrollment> existing = enrollmentRepository.findByUserIdAndCourseId(userId, request.courseId());
         if (existing.isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already enrolled in this course.");
         }
 
+        // Create and save the enrollment with userId and courseId
         Enrollment enrollment = new Enrollment();
         enrollment.setUserId(userId);
         enrollment.setCourseId(request.courseId());
@@ -51,7 +53,7 @@ public class EnrollmentService {
 
         Enrollment saved = enrollmentRepository.save(enrollment);
         log.info("✅ User {} enrolled in course {}", userId, request.courseId());
-        return mapToResponse(saved);
+        return mapToResponse(saved); // Map to DTO
     }
 
     /**
@@ -76,7 +78,7 @@ public class EnrollmentService {
      */
     public Page<EnrollmentResponse> getUserEnrollments(Long userId, Pageable pageable) {
         return enrollmentRepository.findByUserId(userId, pageable)
-                .map(this::mapToResponse);
+                .map(this::mapToResponse);  // Just map to response using courseId and userId
     }
 
     /**

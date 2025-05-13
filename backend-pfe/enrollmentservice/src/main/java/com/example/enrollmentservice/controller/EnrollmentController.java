@@ -107,23 +107,29 @@ public class EnrollmentController {
         return enrollmentRepository.count();
     }
     @GetMapping("/user/{userId}/courses")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<Long>> getUserEnrolledCourses(@PathVariable Long userId) {
         List<Long> courseIds = enrollmentService.getCourseIdsByUserId(userId);
         return ResponseEntity.ok(courseIds);
     }
 
     @GetMapping("/admin/stats/most-popular-course")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_INSTRUCTOR')")
     public CourseStatsResponse getMostPopularCourse() {
         return enrollmentService.getMostPopularCourseStats();
     }
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_INSTRUCTOR')")
     @GetMapping("/instructor/{instructorId}/student-count")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Long> countStudentsByInstructor(@PathVariable Long instructorId) {
-        long count = enrollmentRepository.countDistinctStudentsByInstructorId(instructorId);
-        return ResponseEntity.ok(count);
+        System.out.println("Access granted!");
+        return ResponseEntity.ok(enrollmentRepository.countDistinctStudentsByInstructorId(instructorId));
     }
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    @GetMapping("/instructor/{instructorId}/total")
+    public ResponseEntity<Long> getTotalEnrollmentsForInstructor(@PathVariable Long instructorId) {
+        return ResponseEntity.ok(enrollmentRepository.countByInstructorId(instructorId));
+    }
+
 
 
 

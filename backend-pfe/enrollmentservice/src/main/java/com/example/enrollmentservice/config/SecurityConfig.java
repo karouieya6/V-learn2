@@ -7,12 +7,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -25,6 +27,7 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // ✅ GET all enrollments - only ADMIN
+                        .requestMatchers(HttpMethod.GET, "/api/enrollments/instructor/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers(HttpMethod.GET, "/api/enrollments").hasRole("ADMIN")
 
                         // ✅ Get enrollments by userId - STUDENT and INSTRUCTOR can view their own
@@ -36,7 +39,8 @@ public class SecurityConfig {
                         // ✅ Enroll in course - STUDENT and INSTRUCTOR
 
                         .requestMatchers(HttpMethod.POST, "/api/enrollments").hasAnyRole("INSTRUCTOR","STUDENT")
-                        .requestMatchers("/admin/stats/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/enrollments/admin/stats/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         // ✅ Unenroll - STUDENT and INSTRUCTOR
                         .requestMatchers(HttpMethod.DELETE, "/api/enrollments/**").hasAnyRole("STUDENT", "INSTRUCTOR")
                         .requestMatchers(

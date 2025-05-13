@@ -19,6 +19,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
+import jakarta.servlet.http.HttpServletRequest;
+// Imports you need
+import org.springframework.http.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final HttpServletRequest request;
     private final TokenBlacklistService tokenBlacklistService;
     private final RestTemplate restTemplate;
     @Transactional
@@ -147,38 +152,37 @@ public class UserService {
         return user.getId();
     }
 
-
     public long fetchEnrollmentsCount(Long userId) {
-        return restTemplate.getForObject("http://enrollmentservice/api/enrollments/user/" + userId + "/count", Long.class);
+        return getWithAuth("http://enrollmentservice/api/enrollments/user/" + userId + "/count", Long.class);
     }
 
     public long fetchCompletedCourses(Long userId) {
-        return restTemplate.getForObject("http://contentservice/api/lessons/progress/user/" + userId + "/count-completed", Long.class);
+        return getWithAuth("http://contentservice/api/lessons/progress/user/" + userId + "/count-completed", Long.class);
     }
 
     public long fetchCertificatesCount(Long userId) {
-        return restTemplate.getForObject("http://certificateservice/api/certificates/user/" + userId + "/count", Long.class);
+        return getWithAuth("http://certificateservice/api/certificates/user/" + userId + "/count", Long.class);
     }
 
     public long fetchInstructorCourseCount(Long instructorId) {
-        return restTemplate.getForObject("http://courseservice/api/courses/instructor/" + instructorId + "/count", Long.class);
+        return getWithAuth("http://courseservice/api/courses/instructor/" + instructorId + "/count", Long.class);
     }
 
     public long fetchInstructorStudentCount(Long instructorId) {
-        return restTemplate.getForObject("http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/student-count", Long.class);
+        return getWithAuth("http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/student-count", Long.class);
     }
+
     public double computeUserTotalProgress(Long userId) {
-        List<Long> courseIds = restTemplate.exchange(
+        List<Long> courseIds = exchangeWithAuth(
                 "http://enrollmentservice/api/enrollments/user/" + userId + "/courses",
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<List<Long>>() {}).getBody();
+                new ParameterizedTypeReference<List<Long>>() {}
+        );
 
         if (courseIds == null || courseIds.isEmpty()) return 0.0;
 
         double total = 0;
         for (Long courseId : courseIds) {
-            Double progress = restTemplate.getForObject(
+            Double progress = getWithAuth(
                     "http://contentservice/api/lessons/progress/user/" + userId + "/course/" + courseId,
                     Double.class
             );
@@ -187,6 +191,7 @@ public class UserService {
 
         return total / courseIds.size();
     }
+
     @Transactional
     public boolean removeRoleFromUser(Long userId, String role) {
         Optional<AppUser> userOpt = userRepository.findById(userId);
@@ -204,10 +209,32 @@ public class UserService {
         Optional<AppUser> userOpt = userRepository.findById(userId);
         return userOpt.map(user -> user.getRoles().size()).orElse(0);
     }
+    private <T> T getWithAuth(String url, Class<T> responseType) {
+        HttpHeaders headers = new HttpHeaders();
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null) {
+            headers.set("Authorization", authHeader);
+        }
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        ResponseEntity<T> response = restTemplate.exchange(url, HttpMethod.GET, entity, responseType);
+        return response.getBody();
+    }
+
+    private <T> T exchangeWithAuth(String url, ParameterizedTypeReference<T> typeRef) {
+        HttpHeaders headers = new HttpHeaders();
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null) {
+            headers.set("Authorization", authHeader);
+        }
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        ResponseEntity<T> response = restTemplate.exchange(url, HttpMethod.GET, entity, typeRef);
+        return response.getBody();
+    }
 
 
 
 }
-
 
 
