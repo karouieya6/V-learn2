@@ -1,0 +1,23 @@
+:host ::ng-deep .modal-content {
+    background-color: #ffffff !important; // Couleur solide
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    color: #333;
+    border: 1px solid #dee2e6;
+  }
+  
+  .modal-header {
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .modal-body {
+    font-size: 16px;
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  

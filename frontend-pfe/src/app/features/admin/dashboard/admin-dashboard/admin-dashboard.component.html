@@ -1,0 +1,88 @@
+<div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <div class="dashboard-content">
+  
+          <!-- Admin Counter Stats Component -->
+<!-- Admin Counter Stats Component -->
+<app-admin-counter-state
+  *ngIf="overview"
+  [totalUsers]="overview.totalUsers"
+  [totalCourses]="overview.totalCourses"
+  [totalEnrollments]="overview.totalEnrollments"
+  [instructorRequests]="overview.instructorFunnel?.totalRequests"
+  [activeInstructors]="overview.instructorFunnel?.activeInstructors"
+  [approvedRequests]="overview.instructorFunnel?.approved"
+></app-admin-counter-state>
+
+
+  
+          <!-- Most Popular Course -->
+          <div class="card border shadow-sm mb-4">
+            <div class="card-header">
+              <h5 class="mb-0">Most Popular Course</h5>
+            </div>
+            <div class="card-body">
+              <p class="mb-1"><strong>Title:</strong> {{ overview?.mostPopularCourse?.courseTitle }}</p>
+              <p class="mb-0"><strong>Enrollments:</strong> {{ overview?.mostPopularCourse?.enrollmentCount }}</p>
+            </div>
+          </div>
+  
+          <!-- Top Instructors -->
+          <div class="card border shadow-sm mb-4">
+            <div class="card-header">
+              <h5 class="mb-0">Top Instructors</h5>
+            </div>
+            <div class="card-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Courses</th>
+                    <th>Students</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let inst of overview?.topInstructors">
+                    <td>{{ inst.name }}</td>
+                    <td>{{ inst.email }}</td>
+                    <td>{{ inst.courseCount }}</td>
+                    <td>{{ inst.studentCount }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+  
+          <!-- Instructor Load -->
+          <div class="card border shadow-sm">
+            <div class="card-header">
+              <h5 class="mb-0">Instructor Load</h5>
+            </div>
+            <div class="card-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Courses</th>
+                    <th>Students</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let inst of overview?.instructorLoad">
+                    <td>{{ inst.name }}</td>
+                    <td>{{ inst.email }}</td>
+                    <td>{{ inst.courseCount }}</td>
+                    <td>{{ inst.studentCount }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+  
+        </div>
+      </div>
+    </div>
+  </div>
