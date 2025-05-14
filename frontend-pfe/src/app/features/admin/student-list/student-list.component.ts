@@ -6,6 +6,7 @@ import { NgbProgressbarModule, NgbPaginationModule } from '@ng-bootstrap/ng-boot
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap';
+import { Router } from '@angular/router';
 @Component({
   selector: 'app-student-list',
   standalone: true,
@@ -20,12 +21,16 @@ export class StudentListComponent implements OnInit {
   pageSize: number = 10;
   totalPages: number = 0;
   successMessage: string | null = null;
-  constructor(private modalService: NgbModal,private dashboardService: AdminDashboardService) {}
+  constructor(private router: Router,private modalService: NgbModal,private dashboardService: AdminDashboardService) {}
 
   ngOnInit(): void {
     this.loadStudents();
   }
-
+  viewStudent(id: number) {
+    console.log("id=========>",id);
+    
+    this.router.navigate(['/admin/users/edit', id]);
+  }
   loadStudents() {
     this.dashboardService.getStudents(this.searchTerm, this.page - 1, this.pageSize).subscribe({
       next: (data) => {

@@ -61,7 +61,7 @@
               <td>{{ student.totalCourses }}</td>
               <td>{{ student.joinDate | date: 'shortDate' }}</td>
               <td>
-                <button class="btn btn-sm btn-light me-2">
+                <button class="btn btn-sm btn-light me-2" (click)="viewStudent(student.id)">
                   <i class="fas fa-eye me-1"></i> View
                 </button>
               

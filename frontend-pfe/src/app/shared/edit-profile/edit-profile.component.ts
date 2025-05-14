@@ -42,6 +42,8 @@ export class EditProfileComponent implements OnInit {
         this.profileForm.patchValue(profile);
         this.userId = profile.id;
         this.profileImageUrl = profile.imageUrl || this.defaultAvatar;
+        this.profileImageUrl = this.userService.getProfileImageUrl( profile.imageUrl || this.defaultAvatar);
+
       },
       error: () => this.showError('Erreur lors du chargement du profil')
     });

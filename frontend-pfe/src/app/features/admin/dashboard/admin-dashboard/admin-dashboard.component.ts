@@ -24,4 +24,21 @@ export class AdminDashboardComponent implements OnInit {
       error: (err) => console.error('Erreur de chargement du dashboard', err)
     });
   }
+  downloadExcel() {
+    this.dashboardService.downloadDashboardExcel().subscribe({
+      next: (data: Blob) => {
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'course_engagement_report.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Download failed', err);
+        alert('❌ Error downloading Excel report');
+      }
+    });
+  }
 }
