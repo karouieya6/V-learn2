@@ -183,5 +183,18 @@ public class CourseController {
         Map<String, Object> result = courseRepository.findTopCategory();
         return ResponseEntity.ok(result);
     }
+    @GetMapping("/instructor/{id}")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<List<CourseResponse>> getCoursesByInstructor(@PathVariable Long id) {
+        log.info("Getting courses for instructor ID: {}", id);
+
+        List<Course> courses = courseRepository.findByInstructorId(id);
+
+        List<CourseResponse> responseList = courses.stream()
+                .map(courseService::toResponse)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseList);
+    }
 
 }

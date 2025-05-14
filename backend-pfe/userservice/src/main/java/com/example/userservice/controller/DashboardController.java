@@ -8,6 +8,7 @@ import com.example.userservice.util.ExcelExporter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -44,39 +45,256 @@ public class DashboardController {
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        // Fetch the authenticated instructor's ID
         String instructorEmail = authentication.getName();
         AppUser instructor = userRepository.findByEmail(instructorEmail)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        // Fetch the total number of courses taught by the instructor
-        long totalCourses = restTemplate.exchange(
-                "http://courseservice/api/courses/instructor/" + instructor.getId() + "/count",
-                HttpMethod.GET, entity, Long.class).getBody();
+        Long instructorId = instructor.getId();
+        long totalCourses = 0;
+        long totalEnrolledStudents = 0;
+        List<CourseStatsResponse> popularCourses = new ArrayList<>();
 
-        // Fetch the total number of students enrolled in the instructor's courses
-        long totalEnrolledStudents = restTemplate.exchange(
-                "http://enrollmentservice/api/enrollments/instructor/" + instructor.getId() + "/student-count",
-                HttpMethod.GET, entity, Long.class).getBody();
+        try {
+            totalCourses = Optional.ofNullable(
+                    restTemplate.exchange(
+                            "http://courseservice/api/courses/instructor/" + instructorId + "/count",
+                            HttpMethod.GET, entity, Long.class
+                    ).getBody()
+            ).orElse(0L);
+        } catch (Exception e) {
+            // Log error for debugging
+            System.err.println("Failed to fetch course count: " + e.getMessage());
+        }
 
-        // Fetch the instructor's courses sorted by the number of students enrolled
-        List<CourseStatsResponse> popularCourses = restTemplate.exchange(
-                "http://enrollmentservice/api/enrollments/instructor/" + instructor.getId() + "/most-popular-courses",
-                HttpMethod.GET, entity, List.class).getBody();
+        try {
+            totalEnrolledStudents = Optional.ofNullable(
+                    restTemplate.exchange(
+                            "http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/student-count",
+                            HttpMethod.GET, entity, Long.class
+                    ).getBody()
+            ).orElse(0L);
+        } catch (Exception e) {
+            System.err.println("Failed to fetch student count: " + e.getMessage());
+        }
 
-        // Get the top 5 most popular courses based on student enrollments
+        try {
+            ResponseEntity<List<CourseStatsResponse>> response = restTemplate.exchange(
+                    "http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/most-popular-courses",
+                    HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<>() {}
+            );
+            if (response.getBody() != null) {
+                popularCourses = response.getBody();
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch popular courses: " + e.getMessage());
+        }
+
         List<CourseStatsResponse> top5PopularCourses = popularCourses.stream()
-                .sorted((course1, course2) -> Long.compare(course2.getEnrollmentCount(), course1.getEnrollmentCount()))
+                .sorted(Comparator.comparingLong(CourseStatsResponse::getEnrollmentCount).reversed())
                 .limit(5)
                 .collect(Collectors.toList());
 
-        // Prepare and return the instructor's dashboard data
-        return ResponseEntity.ok(Map.of(
+        Map<String, Object> dashboard = Map.of(
                 "totalCourses", totalCourses,
                 "totalEnrolledStudents", totalEnrolledStudents,
                 "top5PopularCourses", top5PopularCourses
-        ));
+        );
+
+        return ResponseEntity.ok(dashboard);
     }
+    @GetMapping("/instructor/courses")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> getInstructorCourses(
+            Authentication authentication,
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "newest") String sortBy
+    ) {
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        // 🧠 Get instructor from authentication
+        String email = authentication.getName();
+        AppUser instructor = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Instructor not found"));
+
+        Long instructorId = instructor.getId();
+        List<Map<String, Object>> courses = new ArrayList<>();
+        long totalCourses = 0;
+        long totalEnrolledStudents = 0;
+
+        // Fetch instructor's courses count
+        try {
+            totalCourses = Optional.ofNullable(
+                    restTemplate.exchange(
+                            "http://courseservice/api/courses/instructor/" + instructorId + "/count",
+                            HttpMethod.GET, entity, Long.class
+                    ).getBody()
+            ).orElse(0L);
+        } catch (Exception e) {
+            System.err.println("Failed to fetch course count for instructor: " + e.getMessage());
+        }
+
+        // 📦 Get instructor's courses list
+        try {
+            ResponseEntity<List<Map<String, Object>>> courseResponse = restTemplate.exchange(
+                    "http://courseservice/api/courses/instructor/" + instructorId,
+                    HttpMethod.GET, entity, new ParameterizedTypeReference<>() {}
+            );
+            courses = Optional.ofNullable(courseResponse.getBody()).orElse(new ArrayList<>());
+            System.out.println("Courses fetched from courseservice: " + courses.size());
+        } catch (Exception e) {
+            System.err.println("Failed to fetch courses from courseservice: " + e.getMessage());
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // Process each course
+        for (Map<String, Object> course : courses) {
+            String title = (String) course.get("title");
+            Long courseId = ((Number) course.get("id")).longValue();
+
+            // 🔍 Filter by title if search term is provided
+            if (!search.isEmpty() && (title == null || !title.toLowerCase().contains(search.toLowerCase()))) {
+                System.out.println("Course " + title + " excluded due to search filter");
+                continue;
+            }
+
+            int lectureCount = 0;
+            long enrolledCount = 0;
+
+            // 📚 Get number of lessons for each course
+            try {
+                lectureCount = restTemplate.exchange(
+                        "http://contentservice/api/lessons/course/" + courseId + "/count",
+                        HttpMethod.GET, entity, Integer.class
+                ).getBody();
+            } catch (Exception e) {
+                System.err.println("Error fetching lesson count for course " + courseId + ": " + e.getMessage());
+            }
+
+            // 🎓 Get number of enrolled students for each course
+            try {
+                enrolledCount = restTemplate.exchange(
+                        "http://enrollmentservice/api/enrollments/course/" + courseId + "/count",
+                        HttpMethod.GET, entity, Long.class
+                ).getBody();
+            } catch (Exception e) {
+                System.err.println("Error fetching enrollment count for course " + courseId + ": " + e.getMessage());
+            }
+
+            // Add course data to the result
+            result.add(Map.of(
+                    "id", courseId,
+                    "title", title,
+                    "lectureCount", lectureCount,
+                    "enrolledStudents", enrolledCount
+            ));
+        }
+
+        // 🔃 Sort by "mostPopular" or "newest"
+        result.sort((a, b) -> {
+            if ("mostPopular".equalsIgnoreCase(sortBy)) {
+                return Long.compare((Long) b.get("enrolledStudents"), (Long) a.get("enrolledStudents"));
+            } else {
+                return Long.compare((Long) b.get("id"), (Long) a.get("id")); // Assuming id = newest
+            }
+        });
+
+        // If courses list is empty after filtering, log the reason
+        if (result.isEmpty()) {
+            System.out.println("No courses found after filtering and sorting");
+        }
+
+        // Return response with instructor's course data
+        Map<String, Object> dashboard = Map.of(
+                "totalCourses", totalCourses,
+                "courses", result
+        );
+
+        return ResponseEntity.ok(dashboard);
+    }
+    @GetMapping("/instructor/students")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> getStudentsOfInstructor(HttpServletRequest request, Authentication authentication) {
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        // 1️⃣ Get instructor ID from logged-in user
+        String email = authentication.getName();
+        AppUser instructor = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Instructor not found"));
+        Long instructorId = instructor.getId();
+
+        // 2️⃣ Fetch list of student IDs + enrolledAt + courseCount
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                "http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/students",
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+        );
+
+        List<Map<String, Object>> studentsData = response.getBody();
+        if (studentsData == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to fetch students data from Enrollment Service");
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Map<String, Object> student : studentsData) {
+            Long studentId = (student.get("userId") != null) ? ((Number) student.get("userId")).longValue() : null;
+            String enrolledAt = (String) student.get("enrolledAt");
+            Integer courseCount = (student.get("courseCount") != null) ? ((Number) student.get("courseCount")).intValue() : 0;
+
+            // Check if any critical data is missing, skip this student
+            if (studentId == null || enrolledAt == null) {
+                continue;  // You can log this if necessary, but we'll skip incomplete data
+            }
+
+            // 3️⃣ Get student profile (name + image)
+            ResponseEntity<Map<String, Object>> userResponse = restTemplate.exchange(
+                    "http://userservice/user/by-id/" + studentId,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> user = userResponse.getBody();
+            if (user == null) {
+                System.err.println("Failed to fetch user data for studentId: " + studentId);
+                continue;  // Skip the student if user data is missing
+            }
+
+            // 4️⃣ Get progress %
+            Integer progress = 0;
+            try {
+                progress = restTemplate.exchange(
+                        "http://contentservice/api/lessons/progress/user/" + studentId + "/percentage",
+                        HttpMethod.GET,
+                        entity,
+                        Integer.class
+                ).getBody();
+            } catch (Exception e) {
+                System.err.println("Failed to fetch progress for student " + studentId + ": " + e.getMessage());
+                progress = 0;  // Set to 0 if failed
+            }
+
+            // ✅ Combine and add to result
+            result.add(Map.of(
+                    "id", studentId,
+                    "name", user.getOrDefault("firstName", "") + " " + user.getOrDefault("lastName", ""),
+                    "profileImageUrl", user.get("profileImageUrl"),
+                    "progress", progress,
+                    "enrolledCourses", courseCount,
+                    "enrolledDate", enrolledAt
+            ));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
 
     // 👑 ADMIN DASHBOARD
     private HttpHeaders createHeaders(HttpServletRequest request) {

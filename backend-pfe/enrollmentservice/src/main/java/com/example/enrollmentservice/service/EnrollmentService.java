@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -187,6 +189,23 @@ public class EnrollmentService {
     public List<Long> getCourseIdsByUserId(Long userId) {
         return enrollmentRepository.findCourseIdsByUserId(userId);
     }
+    public List<CourseStatsResponse> getTopCoursesByInstructor(Long instructorId) {
+        List<Object[]> rows = enrollmentRepository.findTopCoursesRawByInstructor(instructorId);
+        List<CourseStatsResponse> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            Long courseId = ((Number) row[0]).longValue();
+            Long enrollmentCount = ((Number) row[1]).longValue();
+
+            // 🧠 Optionally fetch course title from CourseService
+            String title = fetchCourseTitle(courseId);
+
+            result.add(new CourseStatsResponse(courseId, title, enrollmentCount));
+        }
+
+        return result;
+    }
+
 
 
 }

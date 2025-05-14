@@ -37,12 +37,19 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/user/email").hasAnyRole("INSTRUCTOR", "STUDENT", "ADMIN")
 
-                        // 🔐 Protected API (must be authenticated with JWT)
-                        .requestMatchers("/user/**").authenticated()
+                        // 🔐 Instructor routes
+                        .requestMatchers("/dashboard/instructor/**").hasRole("INSTRUCTOR")
+
+                        // 🔐 Admin routes
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // 🔐 Any other endpoints (if any)
+
+                        // 🔐 User routes
+                        .requestMatchers("/user/**").authenticated()
+
+                        // 🔐 Catch-all
                         .anyRequest().authenticated()
                 )
+
                 // 🛡 Custom JWT filter before Spring’s default auth filter
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -18,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 @Tag(name = "Enrollments", description = "Course enrollment operations")
@@ -114,11 +115,11 @@ public class EnrollmentController {
     }
 
     @GetMapping("/admin/stats/most-popular-course")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_INSTRUCTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('INSTRUCTOR')")
     public CourseStatsResponse getMostPopularCourse() {
         return enrollmentService.getMostPopularCourseStats();
     }
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_INSTRUCTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('INSTRUCTOR')")
     @GetMapping("/instructor/{instructorId}/student-count")
     public ResponseEntity<Long> countStudentsByInstructor(@PathVariable Long instructorId) {
         System.out.println("Access granted!");
@@ -128,6 +129,34 @@ public class EnrollmentController {
     @GetMapping("/instructor/{instructorId}/total")
     public ResponseEntity<Long> getTotalEnrollmentsForInstructor(@PathVariable Long instructorId) {
         return ResponseEntity.ok(enrollmentRepository.countByInstructorId(instructorId));
+    }
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    @GetMapping("/course/{courseId}/count")
+    public ResponseEntity<Long> countEnrollmentsForCourse(@PathVariable Long courseId) {
+        long count = enrollmentRepository.countByCourseId(courseId);
+        return ResponseEntity.ok(count);
+    }
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    @GetMapping("/instructor/{instructorId}/most-popular-courses")
+    public ResponseEntity<List<CourseStatsResponse>> getTopCoursesByInstructor(@PathVariable Long instructorId) {
+        List<CourseStatsResponse> courses = enrollmentService.getTopCoursesByInstructor(instructorId);
+        return ResponseEntity.ok(courses);
+    }
+    @GetMapping("/instructor/{instructorId}/students")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<List<Map<String, Object>>> getStudentsForInstructor(@PathVariable Long instructorId) {
+        List<Object[]> rawData = enrollmentRepository.findStudentsByInstructor(instructorId);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Object[] row : rawData) {
+            result.add(Map.of(
+                    "userId", row[0],
+                    "enrolledAt", row[1].toString(),
+                    "courseCount", row[2]
+            ));
+        }
+
+        return ResponseEntity.ok(result);
     }
 
 

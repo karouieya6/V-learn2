@@ -95,6 +95,9 @@ public class CourseService {
         return response;
     }
 
+    public CourseResponse toResponse(Course course) {
+        return mapToResponse(course);
+    }
 
 
 

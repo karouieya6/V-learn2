@@ -17,7 +17,7 @@ public class CourseserviceApplication {
 		SpringApplication.run(CourseserviceApplication.class, args);
 	}
 	@Bean
-
+	@LoadBalanced
 	public RestTemplate restTemplate() {
 		return new RestTemplate();
 	}

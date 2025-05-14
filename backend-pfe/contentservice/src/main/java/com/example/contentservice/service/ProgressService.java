@@ -9,9 +9,12 @@ import com.example.contentservice.repository.LessonProgressRepository;
 import com.example.contentservice.repository.LessonRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,7 +28,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProgressService {
     private final LessonRepository lessonRepository;
-
+    private static final Logger log = LoggerFactory.getLogger(ProgressService.class);
     private final LessonProgressRepository lessonProgressRepository;
     private final LessonProgressRepository progressRepository;
     private final RestTemplate restTemplate;
@@ -139,29 +142,37 @@ public class ProgressService {
         // Step 1: Call enrollment service to get course IDs
         String url = "http://enrollmentservice/api/enrollments/user/" + userId + "/courses";
 
-        ResponseEntity<List<Long>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<List<Long>>() {}
-        );
+        try {
+            ResponseEntity<List<Long>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Long>>() {}
+            );
 
-        List<Long> courseIds = response.getBody();
-        if (courseIds == null || courseIds.isEmpty()) {
-            return 0; // No enrolled courses = 0% progress
+            List<Long> courseIds = response.getBody();
+            if (courseIds == null || courseIds.isEmpty()) {
+                return 0; // No enrolled courses = 0% progress
+            }
+
+            // Step 2: Count total lessons in enrolled courses
+            int totalLessons = lessonRepository.countByCourseIdIn(courseIds);
+
+            // Step 3: Count completed lessons
+            int completedLessons = lessonProgressRepository.countCompletedLessonsByUserIdAndCourseIds(userId, courseIds);
+
+            // Step 4: Calculate percentage
+            if (totalLessons == 0) return 0;
+            return (int) Math.round((double) completedLessons / totalLessons * 100);
+        } catch (HttpClientErrorException.Forbidden e) {
+            // Log the error if access is forbidden
+            log.error("Access forbidden when calling enrollment service for user {}: {}", userId, e.getMessage());
+            return 0; // You might want to return 0% progress or handle it differently
+        } catch (Exception e) {
+            // Catch any other exceptions
+            log.error("Error calculating progress for user {}: {}", userId, e.getMessage());
+            return 0;
         }
-
-        // Step 2: Count total lessons in enrolled courses
-        int totalLessons = lessonRepository.countByCourseIdIn(courseIds);
-
-        // Step 3: Count completed lessons
-        int completedLessons = lessonProgressRepository.countCompletedLessonsByUserIdAndCourseIds(userId, courseIds);
-
-
-
-        // Step 4: Calculate percentage
-        if (totalLessons == 0) return 0;
-        return (int) Math.round((double) completedLessons / totalLessons * 100);
     }
 
 

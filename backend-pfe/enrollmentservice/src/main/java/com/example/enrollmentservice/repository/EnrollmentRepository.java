@@ -61,4 +61,24 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     WHERE c.instructor_id = :instructorId
     """, nativeQuery = true)
     long countByInstructorId(@Param("instructorId") Long instructorId);
+    long countByCourseId(Long courseId);
+    @Query(value = """
+    SELECT e.course_id, COUNT(e.id) AS enrollments
+    FROM enrollments e
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.instructor_id = :instructorId
+    GROUP BY e.course_id
+    ORDER BY enrollments DESC
+    LIMIT 5
+""", nativeQuery = true)
+    List<Object[]> findTopCoursesRawByInstructor(@Param("instructorId") Long instructorId);
+    @Query(value = """
+    SELECT e.user_id, MIN(e.enrolled_at) AS first_enrolled, COUNT(e.course_id) AS course_count
+    FROM enrollments e
+    JOIN courses c ON c.id = e.course_id
+    WHERE c.instructor_id = :instructorId
+    GROUP BY e.user_id
+""", nativeQuery = true)
+    List<Object[]> findStudentsByInstructor(@Param("instructorId") Long instructorId);
+
 }
