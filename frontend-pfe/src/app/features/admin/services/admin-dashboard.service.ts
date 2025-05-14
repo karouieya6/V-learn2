@@ -67,4 +67,21 @@ export class AdminDashboardService {
     const headers = this.getAuthHeaders();
     return this.http.get<any>(`${this.baseUrl}/overview`, { headers});
   }
+
+  getUserDétails(userId: number) {
+    const headers = this.getAuthHeaders();
+    return this.http.get<any>(`http://localhost:8080/userservice/user/by-id/${userId}`,{ headers });
+  }
+  updateUser(userId: number, userData: any) {
+    const headers = this.getAuthHeaders();
+    return this.http.put(`http://localhost:8080/userservice/user/update/${userId}`, userData, { headers });
+  }
+  downloadDashboardExcel() {
+    const headers = this.getAuthHeaders(); 
+    return this.http.get('http://localhost:8080/userservice/dashboard/admin/course-engagement-export', {
+      headers,
+      responseType: 'blob'
+    });
+  }
+  
 }

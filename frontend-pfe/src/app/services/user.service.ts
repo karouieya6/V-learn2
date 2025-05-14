@@ -133,6 +133,14 @@ export class UserService {
       catchError(this.handleError<string>('uploadProfilePicture'))
     );
   }
+
+  getProfileImageUrl(imagePath: string | null): string | null {
+    if (!imagePath) return null;
+    const filename = imagePath.split('/').pop(); 
+    console.log("filename",filename);
+    
+    return `http://localhost:8080/userservice/files/profile/${filename}`;
+  }
   
   
 }

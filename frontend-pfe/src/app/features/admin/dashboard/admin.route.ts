@@ -7,6 +7,10 @@ export const ADMIN_ROUTES: Routes = [
     path: '',
     component: AccountLayoutComponent,
     children: [
+      {
+        path: 'users/edit/:id',
+        loadComponent: () => import('../user-edit/user-edit.component').then(m => m.UserEditComponent)
+      }, 
       { path: 'dashboard', component: AdminDashboardComponent },
       {
         path: 'instructors/list',
@@ -20,6 +24,7 @@ export const ADMIN_ROUTES: Routes = [
         path: 'instructors/requests',
         loadComponent: () => import('../instructor-request-list/instructor-request-list.component').then(m => m.InstructorRequestListComponent)
       },     
+         
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   }
