@@ -24,6 +24,8 @@ import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,10 +174,10 @@ public class LessonController {
 
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     @GetMapping("/progress/user/{userId}/percentage")
-    public ResponseEntity<Integer> getUserProgressPercentage(@PathVariable Long userId) {
+    public ResponseEntity<Integer> getUserProgressPercentage(@PathVariable Long userId,HttpServletRequest request) {
         log.info("Calculating progress for user: {}", userId);
         try {
-            int percentage = progressService.calculateOverallUserProgressPercentage(userId);
+            int percentage = progressService.calculateOverallUserProgressPercentage(userId,request);
             return ResponseEntity.ok(percentage);
         } catch (Exception ex) {
             log.error("Error calculating progress for user: {}", userId, ex);
@@ -188,6 +190,12 @@ public class LessonController {
     public ResponseEntity<Integer> countLessonsByCourse(@PathVariable Long courseId) {
         int count = lessonRepository.countByCourseId(courseId);
         return ResponseEntity.ok(count);
+    }
+    @PostMapping("/batch")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> createLessonsBatch(@RequestBody List<LessonRequest> lessons) {
+        lessonService.createLessonsBatch(lessons);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "✅ Lessons created"));
     }
 
 

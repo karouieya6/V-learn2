@@ -123,5 +123,10 @@ public class LessonService {
                 updated.getMaterialUrl()
         );
     }
+    public void createLessonsBatch(List<LessonRequest> lessonRequests) {
+        for (LessonRequest request : lessonRequests) {
+            createLesson(request);
+        }
+    }
 
 }

@@ -109,12 +109,13 @@ public class DashboardController {
             Authentication authentication,
             HttpServletRequest request,
             @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "newest") String sortBy
+            @RequestParam(defaultValue = "newest") String sortBy,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        // 🧠 Get instructor from authentication
         String email = authentication.getName();
         AppUser instructor = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
@@ -122,9 +123,8 @@ public class DashboardController {
         Long instructorId = instructor.getId();
         List<Map<String, Object>> courses = new ArrayList<>();
         long totalCourses = 0;
-        long totalEnrolledStudents = 0;
 
-        // Fetch instructor's courses count
+        // 📦 Fetch total count of instructor's courses
         try {
             totalCourses = Optional.ofNullable(
                     restTemplate.exchange(
@@ -136,35 +136,31 @@ public class DashboardController {
             System.err.println("Failed to fetch course count for instructor: " + e.getMessage());
         }
 
-        // 📦 Get instructor's courses list
+        // 🎓 Fetch actual course list
         try {
             ResponseEntity<List<Map<String, Object>>> courseResponse = restTemplate.exchange(
                     "http://courseservice/api/courses/instructor/" + instructorId,
                     HttpMethod.GET, entity, new ParameterizedTypeReference<>() {}
             );
             courses = Optional.ofNullable(courseResponse.getBody()).orElse(new ArrayList<>());
-            System.out.println("Courses fetched from courseservice: " + courses.size());
         } catch (Exception e) {
             System.err.println("Failed to fetch courses from courseservice: " + e.getMessage());
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
 
-        // Process each course
+        // 🔍 Filter, enrich, and collect
         for (Map<String, Object> course : courses) {
             String title = (String) course.get("title");
             Long courseId = ((Number) course.get("id")).longValue();
 
-            // 🔍 Filter by title if search term is provided
             if (!search.isEmpty() && (title == null || !title.toLowerCase().contains(search.toLowerCase()))) {
-                System.out.println("Course " + title + " excluded due to search filter");
                 continue;
             }
 
             int lectureCount = 0;
             long enrolledCount = 0;
 
-            // 📚 Get number of lessons for each course
             try {
                 lectureCount = restTemplate.exchange(
                         "http://contentservice/api/lessons/course/" + courseId + "/count",
@@ -174,7 +170,6 @@ public class DashboardController {
                 System.err.println("Error fetching lesson count for course " + courseId + ": " + e.getMessage());
             }
 
-            // 🎓 Get number of enrolled students for each course
             try {
                 enrolledCount = restTemplate.exchange(
                         "http://enrollmentservice/api/enrollments/course/" + courseId + "/count",
@@ -184,7 +179,6 @@ public class DashboardController {
                 System.err.println("Error fetching enrollment count for course " + courseId + ": " + e.getMessage());
             }
 
-            // Add course data to the result
             result.add(Map.of(
                     "id", courseId,
                     "title", title,
@@ -193,41 +187,81 @@ public class DashboardController {
             ));
         }
 
-        // 🔃 Sort by "mostPopular" or "newest"
+        // 🔃 Sort
         result.sort((a, b) -> {
             if ("mostPopular".equalsIgnoreCase(sortBy)) {
                 return Long.compare((Long) b.get("enrolledStudents"), (Long) a.get("enrolledStudents"));
             } else {
-                return Long.compare((Long) b.get("id"), (Long) a.get("id")); // Assuming id = newest
+                return Long.compare((Long) b.get("id"), (Long) a.get("id")); // Newest = higher ID
             }
         });
 
-        // If courses list is empty after filtering, log the reason
-        if (result.isEmpty()) {
-            System.out.println("No courses found after filtering and sorting");
+        // 📄 Pagination
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, result.size());
+
+        List<Map<String, Object>> paginatedCourses;
+        if (fromIndex >= result.size()) {
+            paginatedCourses = Collections.emptyList();
+        } else {
+            paginatedCourses = result.subList(fromIndex, toIndex);
         }
 
-        // Return response with instructor's course data
+        // 📦 Final Response
         Map<String, Object> dashboard = Map.of(
                 "totalCourses", totalCourses,
-                "courses", result
+                "courses", paginatedCourses,
+                "total", result.size(),
+                "page", page,
+                "size", size
         );
 
         return ResponseEntity.ok(dashboard);
     }
-    @GetMapping("/instructor/students")
+
+    @DeleteMapping("/instructor/courses/{courseId}")
     @PreAuthorize("hasRole('INSTRUCTOR')")
-    public ResponseEntity<?> getStudentsOfInstructor(HttpServletRequest request, Authentication authentication) {
+    public ResponseEntity<?> deleteCourse(
+            @PathVariable Long courseId,
+            HttpServletRequest request
+    ) {
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        // 1️⃣ Get instructor ID from logged-in user
+        try {
+            // Delete the course via course-service
+            restTemplate.exchange(
+                    "http://courseservice/api/courses/" + courseId,
+                    HttpMethod.DELETE,
+                    entity,
+                    Void.class
+            );
+
+            return ResponseEntity.ok(Map.of("message", "✅ Course deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to delete course: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/instructor/students")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> getStudentsOfInstructor(
+            HttpServletRequest request,
+            Authentication authentication,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "newest") String sortBy,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
         String email = authentication.getName();
         AppUser instructor = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
         Long instructorId = instructor.getId();
 
-        // 2️⃣ Fetch list of student IDs + enrolledAt + courseCount
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 "http://enrollmentservice/api/enrollments/instructor/" + instructorId + "/students",
                 HttpMethod.GET,
@@ -248,12 +282,9 @@ public class DashboardController {
             String enrolledAt = (String) student.get("enrolledAt");
             Integer courseCount = (student.get("courseCount") != null) ? ((Number) student.get("courseCount")).intValue() : 0;
 
-            // Check if any critical data is missing, skip this student
-            if (studentId == null || enrolledAt == null) {
-                continue;  // You can log this if necessary, but we'll skip incomplete data
-            }
+            if (studentId == null || enrolledAt == null) continue;
 
-            // 3️⃣ Get student profile (name + image)
+            // 🔍 Get user profile
             ResponseEntity<Map<String, Object>> userResponse = restTemplate.exchange(
                     "http://userservice/user/by-id/" + studentId,
                     HttpMethod.GET,
@@ -262,12 +293,9 @@ public class DashboardController {
             );
 
             Map<String, Object> user = userResponse.getBody();
-            if (user == null) {
-                System.err.println("Failed to fetch user data for studentId: " + studentId);
-                continue;  // Skip the student if user data is missing
-            }
+            if (user == null) continue;
 
-            // 4️⃣ Get progress %
+            // 🧮 Get progress
             Integer progress = 0;
             try {
                 progress = restTemplate.exchange(
@@ -278,21 +306,85 @@ public class DashboardController {
                 ).getBody();
             } catch (Exception e) {
                 System.err.println("Failed to fetch progress for student " + studentId + ": " + e.getMessage());
-                progress = 0;  // Set to 0 if failed
             }
 
-            // ✅ Combine and add to result
-            result.add(Map.of(
-                    "id", studentId,
-                    "name", user.getOrDefault("firstName", "") + " " + user.getOrDefault("lastName", ""),
-                    "profileImageUrl", user.get("profileImageUrl"),
-                    "progress", progress,
-                    "enrolledCourses", courseCount,
-                    "enrolledDate", enrolledAt
+            String fullName = user.getOrDefault("firstName", "") + " " + user.getOrDefault("lastName", "");
+
+            // 🔍 Search filter
+            if (!search.isBlank() && !fullName.toLowerCase().contains(search.toLowerCase())) continue;
+
+            // ✅ Compose result
+            Map<String, Object> studentMap = new HashMap<>();
+            studentMap.put("id", studentId);
+            studentMap.put("name", fullName);
+            studentMap.put("profileImageUrl", user.getOrDefault("profileImageUrl", null));
+            studentMap.put("progress", progress);
+            studentMap.put("enrolledCourses", courseCount);
+            studentMap.put("enrolledDate", enrolledAt);
+
+            result.add(studentMap);
+        }
+
+        // 🔃 Sort
+        result.sort((a, b) -> {
+            String dateA = (String) a.get("enrolledDate");
+            String dateB = (String) b.get("enrolledDate");
+
+            if ("oldest".equalsIgnoreCase(sortBy)) {
+                return dateA.compareTo(dateB);
+            } else {
+                return dateB.compareTo(dateA); // Default: newest first
+            }
+        });
+
+        // 📄 Paginate
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, result.size());
+        if (fromIndex >= result.size()) {
+            return ResponseEntity.ok(Map.of(
+                    "students", Collections.emptyList(),
+                    "total", result.size(),
+                    "page", page,
+                    "size", size
             ));
         }
 
-        return ResponseEntity.ok(result);
+        List<Map<String, Object>> paginated = result.subList(fromIndex, toIndex);
+
+        return ResponseEntity.ok(Map.of(
+                "students", paginated,
+                "total", result.size(),
+                "page", page,
+                "size", size
+        ));
+    }
+    @GetMapping("/instructor/courses/pending")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> getMyPendingCourses(HttpServletRequest request, Authentication authentication) {
+        String email = authentication.getName();
+        AppUser instructor = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Instructor not found"));
+
+        Long instructorId = instructor.getId();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", request.getHeader("Authorization"));
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(
+                    "http://courseservice/api/courses/instructor/" + instructorId + "/pending",
+                    HttpMethod.GET,
+                    entity,
+                    List.class
+            );
+
+            return ResponseEntity.ok(response.getBody());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to fetch pending courses: " + e.getMessage()));
+        }
     }
 
 
@@ -654,6 +746,33 @@ public class DashboardController {
                 .headers(responseHeaders)
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(resource);
+    }
+    @PutMapping("/admin/approve-course/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> approveCourse(
+            @PathVariable Long courseId,
+            HttpServletRequest request
+    ) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", request.getHeader("Authorization"));
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            // Forward the approval to the course service
+            ResponseEntity<?> response = restTemplate.exchange(
+                    "http://courseservice/api/courses/admin/approve/" + courseId,
+                    HttpMethod.PUT,
+                    entity,
+                    Object.class
+            );
+
+            return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to approve course: " + e.getMessage()));
+        }
     }
 
 

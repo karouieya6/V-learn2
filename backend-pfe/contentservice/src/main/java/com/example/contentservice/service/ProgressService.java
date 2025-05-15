@@ -138,17 +138,24 @@ public class ProgressService {
                 completedLessonIds.contains(lesson.getId())
         )).toList();
     }
-    public int calculateOverallUserProgressPercentage(Long userId) {
+    public int calculateOverallUserProgressPercentage(Long userId, HttpServletRequest request)
+    {
         // Step 1: Call enrollment service to get course IDs
         String url = "http://enrollmentservice/api/enrollments/user/" + userId + "/courses";
 
         try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", request.getHeader("Authorization"));
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
             ResponseEntity<List<Long>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    entity, // ✅ Forward the token
                     new ParameterizedTypeReference<List<Long>>() {}
             );
+
 
             List<Long> courseIds = response.getBody();
             if (courseIds == null || courseIds.isEmpty()) {

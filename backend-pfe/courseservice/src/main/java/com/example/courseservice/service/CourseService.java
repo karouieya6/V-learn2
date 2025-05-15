@@ -26,7 +26,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -46,22 +52,22 @@ public class CourseService {
         Category category = categoryRepository.findById(requestDto.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // 🧠 Extract email and token from request
-        String email = request.getUserPrincipal().getName(); // or from SecurityContext
+        String email = request.getUserPrincipal().getName();
         String token = request.getHeader("Authorization");
 
-        // ✅ Fetch instructor ID securely
         Long instructorId = fetchInstructorIdFromUserService(email, token);
 
         Course course = new Course();
         course.setTitle(requestDto.getTitle());
-        course.setDescription(requestDto.getDescription());
+        course.setDescription(requestDto.getDescription() != null ? requestDto.getDescription() : ""); // fallback
         course.setInstructorId(instructorId);
         course.setCategory(category);
         course.setStatus("PENDING");
+
         Course saved = courseRepository.save(course);
         return mapToResponse(saved);
     }
+
     private CourseResponse mapToResponse(Course course) {
         CourseResponse response = new CourseResponse();
         response.setId(course.getId());
@@ -79,7 +85,7 @@ public class CourseService {
 
         // ✅ Fetch instructor full name from UserService
         try {
-            String url = "http://localhost:8080/userservice/user/by-id/" + course.getInstructorId();
+            String url = "http://userservice/user/by-id/" + course.getInstructorId();
             ResponseEntity<Map> userResponse = restTemplate.getForEntity(url, Map.class);
             Map<?, ?> user = userResponse.getBody();
             if (user != null) {
@@ -194,7 +200,7 @@ public class CourseService {
         headers.set("Authorization", token);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        String url = "http://localhost:8080/userservice/user/email";
+        String url = "http://userservice/user/email";
 
         ResponseEntity<Long> response = restTemplate.exchange(
                 url,
@@ -210,8 +216,32 @@ public class CourseService {
         }
     }
 
+    public String uploadImage(Long courseId, MultipartFile file) {
+        try {
+            // Define the upload path
+            Path uploadPath = Paths.get("uploads/courses/");
 
+            // Create the directory if it doesn't exist
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
 
+            // Generate a unique filename
+            String filename = courseId + "_" + file.getOriginalFilename();
 
+            // Define the file path
+            Path filePath = uploadPath.resolve(filename);
+
+            // Save the file to the path
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Return the relative URL/path to access the image later
+            return "/uploads/courses/" + filename;
+
+        } catch (IOException e) {
+            // If an error occurs, throw an exception with a relevant message
+            throw new RuntimeException("❌ Failed to upload course image", e);
+        }
+    }
 
 }
