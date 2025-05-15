@@ -209,35 +209,26 @@ public class CourseController {
     @PutMapping("/admin/approve/{courseId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> approveCourse(@PathVariable Long courseId) {
-        // Fetch the course from the database
         Optional<Course> optionalCourse = courseRepository.findById(courseId);
 
-        // If the course is not found, return a 404 response
         if (optionalCourse.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "❌ Course not found"));
         }
 
-        // Get the course object
         Course course = optionalCourse.get();
 
-        // Check if the course is already approved to avoid redundant updates
         if ("APPROVED".equals(course.getStatus())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", "❌ Course is already approved"));
         }
 
-        // Set the course status to "APPROVED"
         course.setStatus("APPROVED");
-
-        // Save the updated course
         courseRepository.save(course);
 
-
-
-        // Return a success message
-        return ResponseEntity.ok(Map.of("message", "✅ Course approved successfully and request deleted"));
+        return ResponseEntity.ok(Map.of("message", "✅ Course approved successfully"));
     }
+
 
     @GetMapping("/instructor/{id}/pending")
     @PreAuthorize("hasRole('INSTRUCTOR')")
@@ -249,6 +240,12 @@ public class CourseController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CourseResponse>> getAllCoursesForAdmin() {
+        List<CourseResponse> list = courseService.getAllCourses(); // Assuming it returns CourseResponse
+        return ResponseEntity.ok(list);
     }
 
 }

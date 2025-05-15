@@ -1,4 +1,7 @@
 package com.example.userservice.controller;
+import com.example.userservice.util.MultipartInputStreamFileResource;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 
 import com.example.userservice.dto.CourseStatsResponse;
 import com.example.userservice.model.AppUser;
@@ -17,9 +20,14 @@ import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.core.io.Resource;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -386,6 +394,100 @@ public class DashboardController {
                     .body(Map.of("message", "❌ Failed to fetch pending courses: " + e.getMessage()));
         }
     }
+    @PostMapping("/instructor/courses/create")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> createCourse(@RequestBody Map<String, Object> courseData, HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", request.getHeader("Authorization"));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(courseData, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    "http://courseservice/api/courses/create",
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+            return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to create course: " + e.getMessage()));
+        }
+    }
+    @PostMapping("/instructor/courses/{courseId}/upload-image")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> uploadCourseImage(
+            @PathVariable Long courseId,
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request
+    ) {
+        try {
+            // 🔐 Prepare headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("Authorization", request.getHeader("Authorization"));
+
+            // 📦 Wrap the file in a resource
+            MultipartInputStreamFileResource fileResource =
+                    new MultipartInputStreamFileResource(file.getInputStream(), file.getOriginalFilename());
+
+            // 🧳 Prepare multipart body
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", fileResource);
+
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            // 🌍 Forward to course service
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "http://courseservice/api/courses/" + courseId + "/upload-image",
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            // ✅ Return success
+            return ResponseEntity.ok(Map.of("imageUrl", response.getBody()));
+
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "❌ Could not read uploaded file: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to upload image: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/instructor/courses/{courseId}/lessons")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    public ResponseEntity<?> addLessonsToCourse(
+            @PathVariable Long courseId,
+            @RequestBody List<Map<String, Object>> lessons,
+            HttpServletRequest request
+    ) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", request.getHeader("Authorization"));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Enrich each lesson with courseId (optional if frontend doesn't provide it)
+        lessons.forEach(lesson -> lesson.put("courseId", courseId));
+
+        HttpEntity<List<Map<String, Object>>> entity = new HttpEntity<>(lessons, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    "http://contentservice/api/lessons/batch",
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to add lessons: " + e.getMessage()));
+        }
+    }
 
 
     // 👑 ADMIN DASHBOARD
@@ -476,13 +578,17 @@ public class DashboardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getStudents(
             @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest request
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<AppUser> students = userRepository.findByRoleAndUsernameContainingIgnoreCase("STUDENT", search, pageable);
+        Sort sort = sortBy.equalsIgnoreCase("oldest") ?
+                Sort.by("createdAt").ascending() :
+                Sort.by("createdAt").descending();
 
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<AppUser> students = userRepository.findByRoleAndUsernameContainingIgnoreCase("STUDENT", search, pageable);
 
         List<Map<String, Object>> result = new ArrayList<>();
         HttpHeaders headers = createHeaders(request);
@@ -545,13 +651,17 @@ public class DashboardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getInstructors(
             @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest request
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<AppUser> instructors = userRepository.findByRoleAndUsernameContainingIgnoreCase("INSTRUCTOR", search, pageable);
+        Sort sort = sortBy.equalsIgnoreCase("oldest") ?
+                Sort.by("createdAt").ascending() :
+                Sort.by("createdAt").descending();
 
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<AppUser> instructors = userRepository.findByRoleAndUsernameContainingIgnoreCase("INSTRUCTOR", search, pageable);
 
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
@@ -573,7 +683,8 @@ public class DashboardController {
                     "username", instr.getUsername(),
                     "email", instr.getEmail(),
                     "totalCourses", totalCourses,
-                    "totalStudents", studentCount
+                    "totalStudents", studentCount,
+                    "joinDate", instr.getCreatedAt()
             ));
         }
 
@@ -583,7 +694,6 @@ public class DashboardController {
                 "currentPage", instructors.getNumber()
         ));
     }
-
 
     @DeleteMapping("/admin/instructors/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -753,25 +863,47 @@ public class DashboardController {
             @PathVariable Long courseId,
             HttpServletRequest request
     ) {
+        String token = request.getHeader("Authorization");
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", request.getHeader("Authorization"));
+        headers.set("Authorization", token); // ✅ MUST forward token
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         try {
-            // Forward the approval to the course service
-            ResponseEntity<?> response = restTemplate.exchange(
+            ResponseEntity<Map> response = restTemplate.exchange(
                     "http://courseservice/api/courses/admin/approve/" + courseId,
                     HttpMethod.PUT,
                     entity,
-                    Object.class
+                    Map.class
             );
-
             return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
 
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of(
+                    "message", "❌ Failed to approve course: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString()
+            ));
+        }
+    }
+    @GetMapping("/admin/courses")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getAllCoursesForAdmin(HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", request.getHeader("Authorization"));
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(
+                    "http://courseservice/api/courses",
+                    HttpMethod.GET,
+                    entity,
+                    List.class
+            );
+            return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "❌ Failed to approve course: " + e.getMessage()));
+                    .body(Map.of("message", "❌ Failed to fetch course list: " + e.getMessage()));
         }
     }
 

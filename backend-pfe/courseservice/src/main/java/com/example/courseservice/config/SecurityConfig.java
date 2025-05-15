@@ -41,7 +41,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/comments").hasRole("STUDENT") // Add comment
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").hasAnyRole("STUDENT", "INSTRUCTOR", "ADMIN") // View comments
                         .requestMatchers(HttpMethod.PUT, "/api/comments/*/reply").hasRole("INSTRUCTOR") // Reply to comment
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/courses/admin/**").hasRole("ADMIN")
+
 
                         // Other
                         .requestMatchers("/public/**").permitAll()

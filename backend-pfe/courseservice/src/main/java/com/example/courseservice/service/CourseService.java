@@ -87,19 +87,25 @@ public class CourseService {
         try {
             String url = "http://userservice/user/by-id/" + course.getInstructorId();
             ResponseEntity<Map> userResponse = restTemplate.getForEntity(url, Map.class);
-            Map<?, ?> user = userResponse.getBody();
+            Map<String, Object> user = (Map<String, Object>) userResponse.getBody();
+
             if (user != null) {
-                String fullName = user.get("firstName") + " " + user.get("lastName");
-                response.setInstructorName(fullName);
+                String firstName = ((String) user.getOrDefault("firstName", "")).trim();
+                String lastName = ((String) user.getOrDefault("lastName", "")).trim();
+                String fullName = (firstName + " " + lastName).trim();
+                response.setInstructorName(fullName.isBlank() ? "Unavailable" : fullName);
             } else {
-                response.setInstructorName("Unknown");
+                response.setInstructorName("Unavailable");
             }
         } catch (Exception e) {
+            System.err.println("❌ Failed to fetch instructor: " + e.getMessage());
             response.setInstructorName("Unavailable");
         }
 
+
         return response;
     }
+
 
     public CourseResponse toResponse(Course course) {
         return mapToResponse(course);
