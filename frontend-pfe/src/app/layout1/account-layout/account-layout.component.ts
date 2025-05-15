@@ -11,7 +11,7 @@ import { AdminSidebarComponent } from '../../features/admin/sidebar/admin-sideba
     RouterModule,
     SidebarComponent,
     AdminSidebarComponent,
-    CommonModule // ✅ Your sidebar must be standalone too
+    CommonModule 
   ]
 })
 export class AccountLayoutComponent implements OnInit {
@@ -19,9 +19,11 @@ export class AccountLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     const user = localStorage.getItem('user');
+    console.log("user",user);
+    
     if (user) {
       const parsed = JSON.parse(user);
-      this.userRole = parsed.roles?.[0] || ''; // assuming roles is an array
+      this.userRole = parsed.roles?.[0] || ''; 
     }
   }
 }

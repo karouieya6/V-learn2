@@ -44,18 +44,22 @@ export class SignInAreaComponent implements OnInit {
       headers: { 'Content-Type': 'application/json' }
     }).subscribe({
       next: (res: any) => {
-        console.log('✅ Login success:', res);
-        alert('Welcome back!');
-        localStorage.setItem('token', res.token);
+          localStorage.setItem('token', res.token);
   
-        // 👉 Decode token to get roles
         const decodedToken: any = jwtDecode(res.token);
+        localStorage.setItem('user', JSON.stringify(decodedToken));
         const roles: string[] = decodedToken.roles;
   
-        // 👉 Redirect based on role
+        alert('Welcome back!');
+      
         if (roles.includes('ADMIN')) {
-          this.router.navigate(['/admin/dashboard']);
-        } else if (roles.includes('INSTRUCTOR')) {
+      this.router.navigate(['/admin/dashboard'])
+  .then(() => {
+    console.log('✅ Navigated to admin dashboard');
+  })
+  .catch((err) => {
+    console.error('❌ Navigation to admin dashboard failed:', err);
+  });        } else if (roles.includes('INSTRUCTOR')) {
           this.router.navigate(['/instructor/dashboard']);
         } else {
           this.router.navigate(['/student/dashboard']);
