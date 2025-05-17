@@ -1,0 +1,27 @@
+<div class="row mb-4">
+  <!-- Total Courses -->
+  <div class="col-md-6 mb-3">
+    <div class="card card-body border bg-warning bg-opacity-10 shadow-sm d-flex flex-row justify-content-between align-items-center rounded-3">
+      <div>
+        <h4 class="mb-0 fw-bold" [countUp]="totalCourses">0</h4>
+        <span class="small text-muted">Total Courses</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-center rounded-circle bg-warning text-white" style="width: 40px; height: 40px;">
+        <i class="fas fa-tv fa-lg"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Enrolled Students -->
+  <div class="col-md-6 mb-3">
+    <div class="card card-body border bg-success bg-opacity-10 shadow-sm d-flex flex-row justify-content-between align-items-center rounded-3">
+      <div>
+        <h4 class="mb-0 fw-bold" [countUp]="totalEnrolledStudents">0</h4>
+        <span class="small text-muted">Total Enrolled Students</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-center rounded-circle bg-success text-white" style="width: 40px; height: 40px;">
+        <i class="fas fa-user-graduate fa-lg"></i>
+      </div>
+    </div>
+  </div>
+</div>

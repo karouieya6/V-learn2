@@ -46,10 +46,11 @@ export class AdminDashboardService {
   
     return this.http.get<any>(`${this.baseUrl}/instructors`, { headers, params });
   }
-  getInstructorRequests(search: string = '', page: number = 0, size: number = 10) {
+  getInstructorRequests(search: string = '',sortBy: string = 'newest', page: number = 0, size: number = 10) {
     const headers = this.getAuthHeaders();
     const params = {
       search,
+      sortBy,
       page: page.toString(),
       size: size.toString()
     };

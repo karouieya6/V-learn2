@@ -12,7 +12,10 @@
   ></app-admin-sidebar>
 
   <!-- Instructor sidebar -->
-
+<app-instructor-sidebar
+  *ngIf="userRole === 'INSTRUCTOR'"
+  class="d-none d-md-block"
+></app-instructor-sidebar>
 
   <!-- Main content -->
   <main class="flex-grow-1 px-3">

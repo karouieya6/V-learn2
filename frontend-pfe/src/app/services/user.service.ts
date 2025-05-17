@@ -8,8 +8,8 @@ import { catchError, map, tap } from 'rxjs/operators';
   providedIn: 'root',
 })
 export class UserService {
-  private baseUrl = 'http://localhost:8080/userservice/auth'; // Base URL for auth endpoints
-  private userApiUrl = 'http://localhost:8080/userservice/user'; // Base URL for user-related endpoints
+  private baseUrl = 'http://localhost:8080/userservice/auth'; 
+  private userApiUrl = 'http://localhost:8080/userservice/user';
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -43,7 +43,7 @@ export class UserService {
   logout(): Observable<boolean> {
     const headers = this.getAuthHeaders();
     return this.http.post(`${this.baseUrl}/logout`, {}, { headers }).pipe(
-      map(() => true), // Transform the response to a boolean
+      map(() => true), 
       tap(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -73,7 +73,6 @@ export class UserService {
     const headers = this.getAuthHeaders();
     return this.http.get(`${this.userApiUrl}/profile`, { headers }).pipe(
       tap((user) => {
-        // Optionally save user data to localStorage
         localStorage.setItem('user', JSON.stringify(user));
       }),
       catchError(this.handleError('getProfile'))
@@ -84,7 +83,6 @@ export class UserService {
     const headers = this.getAuthHeaders();
     return this.http.put(`${this.userApiUrl}/profile`, data, { headers }).pipe(
       tap((updatedUser) => {
-        // Update localStorage with the new user data
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }),
       catchError(this.handleError('updateProfile'))
@@ -101,7 +99,7 @@ export class UserService {
     const headers = this.getAuthHeaders();
     return this.http.put(`${this.userApiUrl}/change-password`, data, {
       headers,
-      responseType: 'text' // 👈 THIS is the key fix
+      responseType: 'text' 
     }).pipe(
       catchError(this.handleError('changePassword'))
     );
@@ -136,6 +134,7 @@ export class UserService {
 
   getProfileImageUrl(imagePath: string | null): string | null {
     if (!imagePath) return null;
+      const headers = this.getAuthHeaders();
     const filename = imagePath.split('/').pop(); 
     console.log("filename",filename);
     

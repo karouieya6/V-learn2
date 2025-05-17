@@ -1,0 +1,28 @@
+<!-- Instructor Counter Stats -->
+<app-instructor-counter-state
+  [totalCourses]="overview?.totalCourses"
+  [totalEnrolledStudents]="overview?.totalEnrolledStudents"
+></app-instructor-counter-state>
+
+<!-- Top 5 Popular Courses -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Top 5 Popular Courses</h5>
+  </div>
+  <div class="card-body">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Course Title</th>
+          <th>Enrollments</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let course of overview?.top5PopularCourses">
+          <td>{{ course.courseTitle }}</td>
+          <td>{{ course.enrollmentCount }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

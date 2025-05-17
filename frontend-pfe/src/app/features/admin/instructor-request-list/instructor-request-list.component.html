@@ -12,26 +12,38 @@
         {{ errorMessage }}
       </ngb-alert>
       <!-- Search -->
-      <div class="row g-3 align-items-center justify-content-between mb-4">
-        <div class="col-md-8">
-          <form class="rounded position-relative">
-            <input
-              [(ngModel)]="searchTerm"
-              (input)="onSearchChange()"
-              name="search"
-              class="form-control pe-5 bg-transparent"
-              type="search"
-              placeholder="Search by name or email"
-            />
-            <button
-              type="button"
-              class="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0 text-primary-hover text-reset"
-            >
-              <i class="fas fa-search fs-6"></i>
-            </button>
-          </form>
-        </div>
-      </div>
+  <div class="row g-3 align-items-center justify-content-between mb-4">
+  <div class="col-md-8">
+    <form class="rounded position-relative">
+      <input
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        name="search"
+        class="form-control pe-5 bg-transparent"
+        type="search"
+        placeholder="Search by name or email"
+      />
+      <button
+        type="button"
+        class="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0 text-primary-hover text-reset"
+      >
+        <i class="fas fa-search fs-6"></i>
+      </button>
+    </form>
+  </div>
+
+  <div class="col-md-4 text-end">
+    <select
+      class="form-select bg-light border"
+      [(ngModel)]="sortBy"
+      (change)="onSortChange()"
+      name="sort"
+    >
+      <option value="newest">Sort by Newest</option>
+      <option value="oldest">Sort by Oldest</option>
+    </select>
+  </div>
+</div>
   
       <!-- Table -->
       <div class="table-responsive border-0" *ngIf="requests.length > 0; else noData">
