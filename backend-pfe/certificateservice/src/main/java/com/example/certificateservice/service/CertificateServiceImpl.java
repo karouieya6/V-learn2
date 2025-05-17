@@ -58,19 +58,20 @@ public class CertificateServiceImpl implements CertificateService {
         }
 
         // 4. Get userName & courseTitle
-        String userName = getWithAuth("http://userservice/user/" + userId + "/name", token, String.class);
-        String courseTitle = getWithAuth("http://courseservice/courses/" + courseId + "/title", token, String.class);
+        String userFullName = getWithAuth("http://userservice/user/" + userId + "/full-name", token, String.class);
+        String courseTitle = getWithAuth("http://courseservice/api/courses/" + courseId + "/title", token, String.class);
 
         // 5. Generate PDF
         String fileName = "cert_" + userId + "_" + courseId + ".pdf";
-        String filePath = "certificates/" + fileName;
-        PdfGenerator.generate(userName, courseTitle, filePath);
+        String filePath = "uploads/" + fileName;  // instead of "certificates/"
+
+        PdfGenerator.generate(userFullName, courseTitle, filePath);
 
         Certificate cert = new Certificate();
         cert.setUserId(userId);
         cert.setCourseId(courseId);
         cert.setCourseTitle(courseTitle);
-        cert.setUserName(userName);
+        cert.setUserName(userFullName);
         cert.setIssueDate(LocalDate.now());
         cert.setFilePath(filePath);
 

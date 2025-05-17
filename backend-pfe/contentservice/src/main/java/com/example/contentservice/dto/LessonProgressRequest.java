@@ -5,13 +5,14 @@ public class LessonProgressRequest {
     private Long userId;
     private Long lessonId;
     private boolean completed;
-
+    private Long courseId;
     // Constructors
     public LessonProgressRequest() {}
 
     public LessonProgressRequest(Long userId, Long lessonId, boolean completed) {
         this.userId = userId;
         this.lessonId = lessonId;
+        this.courseId = courseId;
         this.completed = completed;
     }
 
@@ -39,4 +40,12 @@ public class LessonProgressRequest {
     public void setCompleted(boolean completed) {
         this.completed = completed;
     }
+    public Long getCourseId() {          // <--- Add this getter
+        return courseId;
+    }
+
+    public void setCourseId(Long courseId) { // <--- Add this setter
+        this.courseId = courseId;
+    }
+
 }

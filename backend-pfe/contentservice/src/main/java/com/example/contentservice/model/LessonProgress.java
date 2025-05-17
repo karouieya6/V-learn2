@@ -26,7 +26,8 @@ public class LessonProgress {
 
     @Column(name = "lesson_id", nullable = false)
     private Long lessonId;
-
+    @Column(name = "course_id", nullable = false)
+    private Long courseId;
     @Builder.Default
     @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = true;

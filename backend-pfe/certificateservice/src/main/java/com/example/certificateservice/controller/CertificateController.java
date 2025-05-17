@@ -45,7 +45,7 @@ public class CertificateController {
         return certificateRepository.countByUserId(userId);
     }
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<CertificateResponse> generateCertificate(
             @RequestBody CertificateRequest request,
             HttpServletRequest httpRequest

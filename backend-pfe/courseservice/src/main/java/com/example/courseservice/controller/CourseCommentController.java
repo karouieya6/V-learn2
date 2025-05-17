@@ -51,7 +51,7 @@ public class CourseCommentController {
         return ResponseEntity.ok("✅ Comment added");
     }
     private Long fetchUserIdFromUserService(HttpServletRequest request) {
-        String url = "http://localhost:8080/userservice/user/email"; // ✅ your working endpoint
+        String url = "http://userservice/user/email"; // ✅ your working endpoint
         String token = request.getHeader("Authorization");
 
         if (token == null || token.isEmpty()) {

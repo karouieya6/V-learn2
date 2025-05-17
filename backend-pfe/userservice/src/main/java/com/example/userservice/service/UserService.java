@@ -3,6 +3,8 @@ package com.example.userservice.service;
 import com.example.userservice.dto.LoginRequest;
 import com.example.userservice.dto.RegisterRequest;
 import com.example.userservice.model.AppUser;
+import com.example.userservice.model.Role;
+import com.example.userservice.repository.RoleRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.util.JwtUtil;
 import jakarta.transaction.Transactional;
@@ -27,6 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private final RoleRepository roleRepository;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -50,8 +53,10 @@ public class UserService {
 
         // ✅ Always assign default role STUDENT
         Set<String> roles = new HashSet<>();
-        roles.add("STUDENT");
-        user.setRoles(roles);
+        Role studentRole = roleRepository.findByName("STUDENT")
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        user.setRoles(Set.of(studentRole));
+
 
         userRepository.save(user);
         return "✅ User registered successfully!";
@@ -94,9 +99,11 @@ public class UserService {
         AppUser adminUser = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        if (!adminUser.getRoles().contains("ADMIN")) {
-            throw new RuntimeException("Access Denied: Admin role required");
-        }
+        boolean isAdmin = adminUser.getRoles().stream()
+                .anyMatch(r -> "ADMIN".equals(r.getName()));
+
+        if (!isAdmin) throw new RuntimeException("Access Denied: Admin role required");
+
 
         AppUser userToDelete = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -109,9 +116,11 @@ public class UserService {
         AppUser adminUser = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        if (!adminUser.getRoles().contains("ADMIN")) {
-            throw new RuntimeException("Access Denied: Admin role required");
-        }
+        boolean isAdmin = adminUser.getRoles().stream()
+                .anyMatch(r -> "ADMIN".equals(r.getName()));
+
+        if (!isAdmin) throw new RuntimeException("Access Denied: Admin role required");
+
 
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -198,7 +207,11 @@ public class UserService {
         if (userOpt.isEmpty()) return false;
 
         AppUser user = userOpt.get();
-        boolean removed = user.getRoles().remove(role.toUpperCase());
+        Role roleToRemove = roleRepository.findByName(role.toUpperCase())
+                .orElseThrow(() -> new RuntimeException("Role not found: " + role));
+
+        boolean removed = user.getRoles().remove(roleToRemove);
+
         if (removed) {
             userRepository.save(user);
         }

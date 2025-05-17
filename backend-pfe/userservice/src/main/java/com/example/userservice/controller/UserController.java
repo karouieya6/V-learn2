@@ -1,6 +1,8 @@
 package com.example.userservice.controller;
 
 import com.example.userservice.model.AppUser;
+import com.example.userservice.model.Role;
+import com.example.userservice.repository.RoleRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
 import com.example.userservice.util.JwtUtil;
@@ -24,6 +26,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/user")
@@ -33,6 +36,8 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RoleRepository roleRepository;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -131,6 +136,16 @@ public class UserController {
         String imageUrl = userService.saveProfilePicture(userId, file);
         return ResponseEntity.ok(imageUrl);
     }
+    @GetMapping("/{id}/full-name")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'STUDENT')")
+    public ResponseEntity<String> getUserFullNameById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    String fullName = (user.getFirstName() + " " + user.getLastName()).trim();
+                    return ResponseEntity.ok(fullName);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     /**
      * ✅ Get All Users (Admin only)
@@ -144,10 +159,19 @@ public class UserController {
             userData.put("id", user.getId());
             userData.put("username", user.getUsername());
             userData.put("email", user.getEmail());
-            userData.put("roles", user.getRoles());
+            userData.put("roles", user.getRoles().stream().map(Role::getName).toList());
+
             return userData;
         }).toList();
         return ResponseEntity.ok(sanitizedUsers);
+    }
+    // GET /user/{id}/name
+    @GetMapping("/{id}/name")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'STUDENT')")
+    public ResponseEntity<String> getUserNameById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> ResponseEntity.ok(user.getUsername()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     /**
@@ -173,16 +197,25 @@ public class UserController {
         AppUser adminUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        if (!adminUser.getRoles().contains("ADMIN")) {
+        boolean isAdmin = adminUser.getRoles().stream()
+                .anyMatch(role -> "ADMIN".equals(role.getName()));
+        if (!isAdmin) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
+
 
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setUsername(updatedUser.getUsername());
         user.setEmail(updatedUser.getEmail());
-        user.setRoles(updatedUser.getRoles());
+        Set<Role> updatedRoles = updatedUser.getRoles().stream()
+                .map(role -> roleRepository.findByName(role.getName())
+                        .orElseThrow(() -> new RuntimeException("❌ Role not found: " + role.getName())))
+                .collect(Collectors.toSet());
+
+        user.setRoles(updatedRoles);
+
 
         userRepository.save(user);
         return ResponseEntity.ok("✅ User updated successfully!");
@@ -203,7 +236,7 @@ public class UserController {
      * ✅ Request instructor role (Students only)
      */
     @PostMapping("/request-instructor")
-    @PreAuthorize("hasAuthority('STUDENT')")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> requestInstructorRole(Authentication authentication) {
         String email = authentication.getName();
         AppUser user = userRepository.findByEmail(email)
@@ -219,21 +252,7 @@ public class UserController {
     /**
      * ✅ Approve instructor (Admin only)
      */
-    @PutMapping("/approve-instructor/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<?> approveInstructor(@PathVariable Long userId) {
-        AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.getRoles().add("INSTRUCTOR");
-        user.setForceReLogin(true);
-        userRepository.save(user);
-
-        // ✅ Delete the request from instructor_requests after promotion
-        jdbcTemplate.update("DELETE FROM instructor_requests WHERE user_id = ?", userId);
-
-        return ResponseEntity.ok(Map.of("message", "✅ User promoted to INSTRUCTOR and request deleted"));
-    }
 
 
     /**

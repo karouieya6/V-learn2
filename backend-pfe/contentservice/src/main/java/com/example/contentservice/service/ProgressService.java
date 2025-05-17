@@ -46,6 +46,7 @@ public class ProgressService {
         progress.setLessonId(request.getLessonId());
         progress.setIsCompleted(true);
         progress.setCompletedAt(LocalDateTime.now());
+        progress.setCourseId(request.getCourseId());
 
         return lessonProgressRepository.save(progress);
     }
@@ -83,7 +84,7 @@ public class ProgressService {
         progressRepository.deleteById(id);
     }
     private Long fetchUserIdFromUserService(HttpServletRequest request) {
-        String url = "http://localhost:8080/userservice/user/email";
+        String url = "http://userservice/user/email";
 
         // this endpoint should exist and extract user ID from token
 

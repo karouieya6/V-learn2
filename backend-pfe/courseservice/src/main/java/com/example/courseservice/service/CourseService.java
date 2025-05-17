@@ -63,7 +63,7 @@ public class CourseService {
         course.setInstructorId(instructorId);
         course.setCategory(category);
         course.setStatus("PENDING");
-
+        course.setCreatedAt(LocalDateTime.now());
         Course saved = courseRepository.save(course);
         return mapToResponse(saved);
     }

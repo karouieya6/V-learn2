@@ -31,7 +31,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/courses").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/courses/category/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/courses/**").permitAll()
-
+                        .requestMatchers("/api/courses/admin/**").hasRole("ADMIN")
                         // Course management
                         .requestMatchers(HttpMethod.POST, "/api/courses/create").hasRole("INSTRUCTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasRole("INSTRUCTOR")
@@ -41,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/comments").hasRole("STUDENT") // Add comment
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").hasAnyRole("STUDENT", "INSTRUCTOR", "ADMIN") // View comments
                         .requestMatchers(HttpMethod.PUT, "/api/comments/*/reply").hasRole("INSTRUCTOR") // Reply to comment
-                        .requestMatchers("/api/courses/admin/**").hasRole("ADMIN")
+
 
 
                         // Other

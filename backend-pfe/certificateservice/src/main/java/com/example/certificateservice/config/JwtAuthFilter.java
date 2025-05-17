@@ -12,12 +12,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -55,15 +57,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String username = claims.getSubject();
         ArrayList<String> roles = claims.get("roles", ArrayList.class);
 
-        if (username == null || roles == null || roles.isEmpty()) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token payload");
-            return;
+        // Support multiple roles!
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        if (roles != null) {
+            for (String r : roles) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + r));
+            }
         }
 
-        String role = roles.get(0);
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
-
-        User userDetails = new User(username, "", Collections.singletonList(authority));
+        UserDetails userDetails = new User(username, "", authorities);
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails,
@@ -73,8 +75,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // Debug logs
         System.out.println("🧠 Authenticated: " + username);
-        System.out.println("🛡 Role: ROLE_" + role);
+        System.out.println("🛡 Roles: " + authorities);
         System.out.println("✅ Authorities: " + authentication.getAuthorities());
 
         filterChain.doFilter(request, response);

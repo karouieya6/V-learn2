@@ -1,4 +1,6 @@
 package com.example.userservice.controller;
+import com.example.userservice.model.Role;
+import com.example.userservice.repository.RoleRepository;
 import com.example.userservice.util.MultipartInputStreamFileResource;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +44,7 @@ public class DashboardController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
-
+    private final RoleRepository roleRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -503,6 +505,9 @@ public class DashboardController {
     public ResponseEntity<?> getAdminDashboard(HttpServletRequest request) {
         HttpHeaders headers = createHeaders(request);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
+        long totalCertificates = restTemplate.exchange(
+                "http://certificateservice/api/certificates/admin/stats/total-certificates",
+                HttpMethod.GET, entity, Long.class).getBody();
 
         long totalCourses = restTemplate.exchange(
                 "http://courseservice/api/courses/count",
@@ -563,6 +568,7 @@ public class DashboardController {
                 "totalCourses", totalCourses,
                 "totalEnrollments", totalEnrollments,
                 "totalUsers", totalUsers,
+                "totalCertificates", totalCertificates,
                 "mostPopularCourse", mostPopularCourse,
                 "instructorFunnel", Map.of(
                         "totalRequests", requests,
@@ -730,12 +736,16 @@ public class DashboardController {
         }
     }
     @PutMapping("admin/approve-instructor/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> approveInstructor(@PathVariable Long userId) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.getRoles().add("INSTRUCTOR");
+        Role instructorRole = roleRepository.findByName("INSTRUCTOR")
+                .orElseThrow(() -> new RuntimeException("❌ Role INSTRUCTOR not found"));
+
+        user.getRoles().add(instructorRole);
+
         user.setForceReLogin(true);
         userRepository.save(user);
 
@@ -750,7 +760,7 @@ public class DashboardController {
      * ✅ Get instructor requests (Admin only)
      */
     @GetMapping("admin/instructor-requests")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getInstructorRequests(
             @RequestParam(defaultValue = "") String search, // Search by username
             @RequestParam(defaultValue = "newest") String sortBy // Sort by "newest" or "oldest"
@@ -787,7 +797,7 @@ public class DashboardController {
 
 
     @PutMapping("admin/reject-instructor/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> rejectInstructor(@PathVariable Long userId) {
         int updated = jdbcTemplate.update("UPDATE instructor_requests SET status = 'REJECTED' WHERE user_id = ?", userId);
         if (updated > 0) {
@@ -905,6 +915,98 @@ public class DashboardController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "❌ Failed to fetch course list: " + e.getMessage()));
         }
+    }
+    @PutMapping("/admin/reject-course/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> rejectCourse(
+            @PathVariable Long courseId,
+            HttpServletRequest request
+    ) {
+        String token = request.getHeader("Authorization");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            restTemplate.exchange(
+                    "http://courseservice/api/courses/admin/reject/" + courseId,
+                    HttpMethod.PUT,
+                    entity,
+                    Map.class
+            );
+            return ResponseEntity.ok(Map.of("message", "❌ Course rejected successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to reject course: " + e.getMessage()));
+        }
+    }
+    @GetMapping("/admin/course-summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getAdminCourseSummary(HttpServletRequest request) {
+        // Create headers and entity for the request
+        HttpHeaders headers = createHeaders(request);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        long totalCourses = 0;
+        long approvedCourses = 0;
+        long pendingCourses = 0;
+        List<Map<String, Object>> courseList = new ArrayList<>();
+
+        try {
+            // Fetch all courses from the course-service
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    "http://courseservice/api/courses",
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+
+            List<Map<String, Object>> courses = Optional.ofNullable(response.getBody()).orElse(Collections.emptyList());
+            totalCourses = courses.size();
+
+            // Loop through the courses to count the statuses and gather course details
+            for (Map<String, Object> course : courses) {
+                String status = (String) course.get("status");
+                if ("APPROVED".equalsIgnoreCase(status)) {
+                    approvedCourses++;
+                } else if ("PENDING".equalsIgnoreCase(status)) {
+                    pendingCourses++;
+                }
+
+                // Format course summary with necessary fields
+                Map<String, Object> courseMap = Map.of(
+                        "title", course.get("title"),
+                        "instructorName", course.get("instructorName"),  // Ensure this field is available
+                        "addedDate", course.get("createdAt"),
+                        "status", status
+                );
+                courseList.add(courseMap);
+            }
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            // Handle specific client/server error exceptions
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("message", "❌ Failed to fetch courses from course service: " + e.getMessage()));
+        } catch (Exception e) {
+            // Generic error handling
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "❌ Failed to fetch courses: " + e.getMessage()));
+        }
+
+        // Final response structure with course statistics and list
+        Map<String, Object> response = Map.of(
+                "stats", Map.of(
+                        "totalCourses", totalCourses,
+                        "approvedCourses", approvedCourses,
+                        "pendingCourses", pendingCourses
+                ),
+                "courses", courseList
+        );
+
+        return ResponseEntity.ok(response);
     }
 
 

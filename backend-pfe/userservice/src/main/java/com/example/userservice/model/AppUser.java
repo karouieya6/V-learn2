@@ -34,10 +34,13 @@ public class AppUser implements UserDetails{
     private String password;
     @Column(length = 20)
     private String phone;
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles = new HashSet<>();
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
     @Column(name = "first_name")
     private String firstName;
 
@@ -66,7 +69,7 @@ public class AppUser implements UserDetails{
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // Optional "ROLE_" prefix for Spring Security
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName())) // Optional "ROLE_" prefix for Spring Security
                 .toList();
     }
     public String getImageUrl() {

@@ -106,7 +106,7 @@ public class EnrollmentService {
      * ✅ Call UserService to extract userId from token
      */
     private Long fetchUserIdFromUserService(HttpServletRequest request) {
-        String url = "http://localhost:8080/userservice/user/email";
+        String url = "http://userservice/user/email";
 
         // this endpoint should exist and extract user ID from token
 

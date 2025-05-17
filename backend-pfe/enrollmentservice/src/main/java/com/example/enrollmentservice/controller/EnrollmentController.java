@@ -46,6 +46,8 @@ public class EnrollmentController {
             summary = "Get all enrollments",
             description = "Returns a list of all enrollments. Admin access only."
     )
+    @PreAuthorize("hasRole('ADMIN')")
+
     @GetMapping
     public ResponseEntity<List<EnrollmentResponse>> getAllEnrollments() {
         List<EnrollmentResponse> all = enrollmentService.getAllEnrollments();

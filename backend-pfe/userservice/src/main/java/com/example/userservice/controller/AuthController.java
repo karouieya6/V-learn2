@@ -3,6 +3,8 @@ package com.example.userservice.controller;
 import com.example.userservice.dto.LoginRequest;
 import com.example.userservice.dto.RegisterRequest;
 import com.example.userservice.model.AppUser;
+import com.example.userservice.model.Role;
+import com.example.userservice.repository.RoleRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
 import com.example.userservice.util.JwtUtil;
@@ -29,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class AuthController {
     private final Map<String, ResetTokenData> resetTokens = new ConcurrentHashMap<>();
+    private final RoleRepository roleRepository;
 
     private static class ResetTokenData {
         String email;
@@ -171,7 +174,11 @@ public class AuthController {
             user.setLastName(request.getLastName());
             user.setPhone(request.getPhone());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setRoles(Set.of("STUDENT"));
+            Role studentRole = roleRepository.findByName("STUDENT")
+                    .orElseThrow(() -> new RuntimeException("❌ Role not found"));
+            user.setRoles(Set.of(studentRole));
+
+
 
 
             userRepository.save(user);

@@ -1,7 +1,10 @@
 package com.example.userservice;
 
 import com.example.userservice.model.AppUser;
+import com.example.userservice.model.Role;
+import com.example.userservice.repository.RoleRepository;
 import com.example.userservice.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -46,21 +49,27 @@ public class UserserviceApplication {
 		}
 	}
 
-
+	@Autowired
+	private RoleRepository roleRepository;
 	@Bean
-	CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder encoder) {
+	CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder encoder, RoleRepository roleRepository) {
 		return args -> {
 			String adminEmail = "admin@example.com";
 			if (!userRepository.existsByEmail(adminEmail)) {
 				AppUser admin = new AppUser();
 				admin.setUsername("admin");
 				admin.setEmail(adminEmail);
-				admin.setPassword(encoder.encode("admin123")); // ✅ Default password
-				admin.setRoles(Set.of("ADMIN"));
+				admin.setPassword(encoder.encode("admin123")); // Use env var in real apps
+
+				Role adminRole = roleRepository.findByName("ADMIN")
+						.orElseThrow(() -> new RuntimeException("ADMIN role not found"));
+
+				admin.setRoles(Set.of(adminRole));
 				admin.setActive(true);
 				admin.setFirstName("System");
 				admin.setLastName("Administrator");
 				admin.setPhone("+21612345678");
+
 				userRepository.save(admin);
 				System.out.println("✅ Default ADMIN user created");
 			}

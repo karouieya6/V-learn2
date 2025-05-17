@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // <-- add this
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/certificates/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/certificates/**").hasAnyRole("ADMIN", "STUDENT")
                         .requestMatchers(HttpMethod.GET, "/api/certificates/**").hasAnyRole("STUDENT", "INSTRUCTOR", "ADMIN")
                         .requestMatchers("/admin/stats/**").hasRole("ADMIN")
 

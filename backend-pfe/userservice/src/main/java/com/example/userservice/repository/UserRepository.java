@@ -13,19 +13,27 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByEmail(String email);
     boolean existsByEmail(String email);
-    @Query("SELECT COUNT(u) FROM AppUser u WHERE :role NOT MEMBER OF u.roles")
+    @Query("SELECT COUNT(u) FROM AppUser u JOIN u.roles r WHERE r.name <> :role")
     long countNonAdminUsers(@Param("role") String role);
+
     Optional<AppUser> findByUsername(String username);
-    @Query("SELECT u FROM AppUser u WHERE :role IN elements(u.roles)")
+    @Query("SELECT u FROM AppUser u JOIN u.roles r WHERE r.name = :role")
     List<AppUser> findAllByRole(@Param("role") String role);
 
+
     Page<AppUser> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
-    @Query("SELECT u FROM AppUser u WHERE :role IN elements(u.roles) AND LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))")
+    @Query("""
+    SELECT u FROM AppUser u 
+    JOIN u.roles r 
+    WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) 
+    AND r.name = :role
+""")
     Page<AppUser> findByRoleAndUsernameContainingIgnoreCase(
             @Param("role") String role,
             @Param("search") String search,
             Pageable pageable
     );
+
 
     // Add this method to find active users
     List<AppUser> findByActiveTrue(); // Only return active users

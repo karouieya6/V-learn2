@@ -117,7 +117,7 @@ public class CourseController {
      */
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('INSTRUCTOR')")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<CourseResponse> updateCourse(
             @PathVariable Long id,
             @RequestBody CourseUpdateRequest request) {
@@ -227,6 +227,28 @@ public class CourseController {
         courseRepository.save(course);
 
         return ResponseEntity.ok(Map.of("message", "✅ Course approved successfully"));
+    }
+    @PutMapping("/admin/reject/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> rejectCourse(@PathVariable Long courseId) {
+        Optional<Course> optionalCourse = courseRepository.findById(courseId);
+
+        if (optionalCourse.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "❌ Course not found"));
+        }
+
+        Course course = optionalCourse.get();
+
+        if ("REJECTED".equalsIgnoreCase(course.getStatus())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "❌ Course is already rejected"));
+        }
+
+        course.setStatus("REJECTED");
+        courseRepository.save(course);
+
+        return ResponseEntity.ok(Map.of("message", "❌ Course rejected successfully"));
     }
 
 
