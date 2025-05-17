@@ -6,7 +6,7 @@ import { AdminDashboardService } from '../services/admin-dashboard.service';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap';
 
-@Component({
+@Component({ 
   selector: 'app-instructor-list',
   standalone: true,
   templateUrl: './instructor-list.component.html',

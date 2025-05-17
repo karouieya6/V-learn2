@@ -1,0 +1,33 @@
+<div class="admin-sidebar bg-white shadow-sm border-end vh-100 p-3">
+  <ul class="nav flex-column">
+    <li class="nav-item mb-2">
+      <a class="nav-link" routerLink="/instructor/dashboard">
+        <i class="fas fa-chart-line me-2"></i> Dashboard
+      </a>
+    </li>
+
+    <li class="nav-item mb-2">
+      <a class="nav-link" routerLink="/instructor/courses">
+        <i class="fas fa-book me-2"></i> My Courses
+      </a>
+    </li>
+
+ <!--    <li class="nav-item mb-2">
+      <a class="nav-link" routerLink="/instructor/students">
+        <i class="fas fa-user-graduate me-2"></i> My Students
+      </a>
+    </li> -->
+
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/instructor/profile">
+        <i class="fas fa-user-cog me-2"></i> My Profile
+      </a>
+    </li>
+
+    <li class="nav-item mt-3">
+      <button class="btn btn-outline-danger w-100" (click)="logout()">
+        <i class="fas fa-sign-out-alt me-2"></i> Sign Out
+      </button>
+    </li>
+  </ul>
+</div>

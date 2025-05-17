@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { AdminSidebarComponent } from '../../features/admin/sidebar/admin-sidebar/admin-sidebar.component';
+import { InstructorSidebarComponent } from '../../features/instructor/sidebar/instructor-sidebar/instructor-sidebar.component';
 @Component({
   selector: 'app-account-layout',
   templateUrl: './account-layout.component.html',
@@ -11,6 +12,7 @@ import { AdminSidebarComponent } from '../../features/admin/sidebar/admin-sideba
     RouterModule,
     SidebarComponent,
     AdminSidebarComponent,
+    InstructorSidebarComponent,
     CommonModule 
   ]
 })

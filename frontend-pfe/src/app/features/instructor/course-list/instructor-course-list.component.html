@@ -1,0 +1,67 @@
+<div class="card border bg-transparent rounded-3">
+  <div class="card-header bg-transparent border-bottom">
+    <h3 class="mb-0">My Courses</h3>
+  </div>
+
+  <div class="card-body">
+    <!-- Search & Sort -->
+    <div class="row g-3 align-items-center justify-content-between mb-4">
+      <div class="col-md-8">
+        <form class="rounded position-relative">
+          <input
+            [(ngModel)]="searchTerm"
+            (input)="onSearchChange()"
+            name="search"
+            class="form-control pe-5 bg-transparent"
+            type="search"
+            placeholder="Search by course title"
+          />
+        </form>
+      </div>
+
+      <div class="col-md-4 text-end">
+        <select class="form-select bg-light border" [(ngModel)]="sortBy" (change)="onSortChange()" name="sort">
+          <option value="newest">Sort by Newest</option>
+          <option value="mostPopular">Sort by Most Popular</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive border-0" *ngIf="courses.length > 0; else noData">
+      <table class="table table-dark-gray align-middle p-4 mb-0 table-hover">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Lectures</th>
+            <th>Enrolled</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let course of courses">
+            <td>{{ course.title }}</td>
+            <td>{{ course.lectureCount }}</td>
+            <td>{{ course.enrolledStudents }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #noData>
+      <div class="text-center py-5 text-muted">No courses found.</div>
+    </ng-template>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center mt-4" *ngIf="totalPages > 1">
+      <ngb-pagination
+        [collectionSize]="totalCourses"
+        [(page)]="page"
+        [pageSize]="pageSize"
+        (pageChange)="onPageChange($event)"
+        size="sm"
+        class="pagination pagination-sm pagination-primary-soft"
+        [boundaryLinks]="true"
+      ></ngb-pagination>
+    </div>
+  </div>
+</div>

@@ -23,7 +23,11 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'instructors/requests',
         loadComponent: () => import('../instructor-request-list/instructor-request-list.component').then(m => m.InstructorRequestListComponent)
-      },     
+      },    
+      {
+        path: 'profile',
+        loadComponent: () => import('../admin-profile/admin-profile.component').then(m => m.AdminProfileComponent)
+      }, 
          
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

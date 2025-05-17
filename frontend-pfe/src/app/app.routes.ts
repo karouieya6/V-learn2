@@ -32,6 +32,13 @@ export const routes: Routes = [
     canActivate: [RoleGuard],
     data: { roles: ['ADMIN'] }
   },
+  {
+  path: 'instructor',
+  loadChildren: () =>
+    import('./features/instructor/instructor.route').then(m => m.INSTRUCTOR_ROUTES),
+  canActivate: [RoleGuard],
+  data: { roles: ['INSTRUCTOR'] }
+},
 
  
 
